@@ -151,7 +151,7 @@ def get_data(
             data_values.append(value)
 
         #Open connection to test server
-        test_dhis2_conn = workspace.dhis2_connection("lifenet-test")
+        prod_dhis2_conn = workspace.dhis2_connection("lifenet")
         values = {
             'dataValues': data_values
         }
@@ -159,8 +159,8 @@ def get_data(
         #Push values 
         print(values)
         response = requests.post(
-            f'{test_dhis2_conn.url}/api/dataValueSets',
-            auth=(test_dhis2_conn.username, test_dhis2_conn.password),
+            f'{prod_dhis2_conn.url}/api/dataValueSets',
+            auth=(prod_dhis2_conn.username, prod_dhis2_conn.password),
             headers={'Content-Type': 'application/json'},
             data=json.dumps(values, allow_nan=True)
         )
