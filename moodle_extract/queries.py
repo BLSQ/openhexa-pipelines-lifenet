@@ -19,8 +19,8 @@ SELECT
   CAST(
     (
       CASE
-        WHEN POSITION.data = 'unassigned' THEN NULL
-        ELSE POSITION.data
+        WHEN position.data = 'unassigned' THEN NULL
+        ELSE position.data
       END
     ) AS CHAR(100)
   ) AS 'position',
@@ -38,8 +38,8 @@ FROM
   LEFT JOIN mdl_cohort AS cohort ON members.cohortid = cohort.id
   LEFT JOIN mdl_user_info_data AS gender ON user_.id = gender.userid
   AND gender.fieldid = 1
-  LEFT JOIN mdl_user_info_data AS POSITION ON user_.id = POSITION.userid
-  AND POSITION.fieldid = 2
+  LEFT JOIN mdl_user_info_data AS position ON user_.id = position.userid
+  AND position.fieldid = 2
   LEFT JOIN mdl_user_info_data AS phase_ ON user_.id = phase_.userid
   AND phase_.fieldid = 3
 WHERE
@@ -68,7 +68,8 @@ QUERIES["courses"] = """
 SELECT
   course.id AS course_id,
   course.fullname AS course_name,
-  category.name AS MODULE,
+  category.id AS category_id,
+  category.name AS category_name,
   (
     CASE
       WHEN course.fullname LIKE '%-Med-%' THEN 'MEDICAL'
