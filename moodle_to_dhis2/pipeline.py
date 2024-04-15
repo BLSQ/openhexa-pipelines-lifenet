@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import polars as pl
-from openhexa.sdk import parameter, pipeline, workspace
+from openhexa.sdk import current_run, parameter, pipeline, workspace
 from openhexa.toolbox.dhis2 import DHIS2
 from tracker import (
     DHIS2_DATE_FORMAT,
@@ -52,6 +52,7 @@ def moodle_to_dhis2(import_mode: str, import_strategy: str, input_dir: str, outp
     """
     con = workspace.dhis2_connection("moodle-lifenet")
     dhis2 = DHIS2(con, Path(workspace.files_path, ".cache"))
+    current_run.log_info(f"Connected to DHIS2 instance {con.url} with user {con.username}")
 
     input_dir = Path(workspace.files_path, input_dir)
     output_dir = Path(
@@ -79,6 +80,8 @@ def sync_tracked_entities(dhis2: DHIS2, input_dir: Path, output_dir: Path):
         program_uid=LEARNING_PROGRAM_UID,
     )
 
+    current_run.log_info(f"Syncing {len(users)} Moodle users as tracked entities")
+
     payload = prepare_tracked_entities_payload(
         dhis2=dhis2,
         users=users,
@@ -88,6 +91,7 @@ def sync_tracked_entities(dhis2: DHIS2, input_dir: Path, output_dir: Path):
 
     with open(Path(output_dir, "tracked_entities_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "tracked_entities_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, tracked_entities=payload)
 
@@ -97,6 +101,7 @@ def sync_tracked_entities(dhis2: DHIS2, input_dir: Path, output_dir: Path):
             f,
             indent=True,
         )
+        current_run.add_file_output(os.path.join(output_dir, "tracked_entities_report.json"))
 
     return True
 
@@ -108,17 +113,22 @@ def sync_grade_enrollments(
     """TODO"""
     users = pl.read_parquet(Path(input_dir, "users.parquet"))
     enrollments = get_enrollments(dhis2, LEARNING_PROGRAM_UID)
+
     payload = prepare_enrollments_payload(
         existing_enrollments=enrollments, users=users, program_uid=LEARNING_PROGRAM_UID, dhis2=dhis2
     )
 
+    current_run.log_info(f"Syncing {len(payload)} program enrollments")
+
     with open(Path(output_dir, "grade_enrollments_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "grade_enrollments_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, enrollments=payload)
 
     with open(Path(output_dir, "grade_enrollments_report.json"), "w") as f:
         json.dump(report, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "grade_enrollments_report.json"))
 
     return True
 
@@ -178,7 +188,7 @@ def sync_grade_events(dhis2: DHIS2, input_dir: Path, output_dir: Path, wait: boo
         count = len(grades)
         grades = grades.filter(pl.col(c).is_not_null())
         if len(grades) < count:
-            print(
+            current_run.log_warning(
                 f"Ignored {count - len(grades)} grade events with unexpected null values for column `{c}`"
             )
 
@@ -190,13 +200,17 @@ def sync_grade_events(dhis2: DHIS2, input_dir: Path, output_dir: Path, wait: boo
         data_values_mapping=LEARNING_DATA_VALUES,
     )
 
+    current_run.log_info(f"Syncing {len(payload)} grades as program events")
+
     with open(Path(output_dir, "grade_events_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "grade_events_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, events=payload)
 
     with open(Path(output_dir, "grade_events_report.json"), "w") as f:
         json.dump(report, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "grade_events_report.json"))
 
     return True
 
@@ -243,13 +257,17 @@ def sync_enrollment_events(
         program_stage_uid=ENROLLMENTS_PROGRAM_STAGE_UID,
     )
 
+    current_run.log_ingo(f"Syncing {len(payload)} course enrollments as program events")
+
     with open(Path(output_dir, "enrollments_events_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "enrollments_events_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, events=payload)
 
     with open(Path(output_dir, "enrollments_events_report.json"), "w") as f:
         json.dump(report, f, indent=True)
+        current_run.add_file_output(os.path.join(output_dir, "enrollments_events_report.json"))
 
     return True
 

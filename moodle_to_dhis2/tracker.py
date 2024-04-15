@@ -2,6 +2,7 @@ from time import sleep
 from typing import List
 
 import polars as pl
+from openhexa.sdk import current_run
 from openhexa.toolbox.dhis2 import DHIS2
 
 DHIS2_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.000"
@@ -176,7 +177,7 @@ def join_tracked_entities_uid(
     for ou in users["org_unit"].unique():
         if ou:
             if ou not in org_units:
-                print(f"Org unit '{ou}' from Moodle not found in Tracker program")
+                current_run.log_warning(f"Org unit '{ou}' from Moodle not found in Tracker program")
 
     users = users.filter(pl.col("org_unit").is_in(org_units))
 
@@ -310,7 +311,7 @@ def prepare_grade_events_payload(
     count = len(grades)
     grades = grades.filter(pl.col("enrollment").is_not_null())
     if len(grades) < count:
-        print(
+        current_run.log_warning(
             f"Ignored {count - len(grades)} grade events with unexpected null value for column `enrollment`"
         )
 
@@ -430,7 +431,7 @@ def push_to_tracker(
 ) -> str:
     """Push tracked entities, program enrollments or events to DHIS2."""
     if not tracked_entities and not enrollments and not events:
-        print("No payload provided")
+        current_run.log_error("No payload provided")
         return
 
     payload = {}
@@ -459,7 +460,7 @@ def push_to_tracker(
     # regularly fetch import job status
 
     completed = False
-    print(f"Waiting for completion of DHIS2 Tracker import job {job_uid}")
+    current_run.log_info(f"Waiting for completion of DHIS2 Tracker import job {job_uid}")
     messages = []
 
     i = 0
@@ -468,7 +469,7 @@ def push_to_tracker(
         for step in r.json():
             if step["message"] not in messages:
                 messages.append(step["message"])
-                print(step["message"])
+                current_run.log_info(step["message"])
             if step["completed"]:
                 completed = True
 
