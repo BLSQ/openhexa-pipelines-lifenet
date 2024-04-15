@@ -16,7 +16,7 @@ def moodle_extract(output_dir: str):
 
     Pipeline functions should only call tasks and should never perform IO operations or expensive computations.
     """
-    con = workspace.custom_connection("moodle-db")
+    con = workspace.custom_connection("moodle-database")
     db = f"mysql://{con.username}:{con.password}@{con.host}:{con.port}/{con.dbname}"
     current_run.log_info(f"Conneced to database {con.host}/{con.dbname} with user {con.username}")
     output_dir = Path(workspace.files_path, Path(output_dir))
