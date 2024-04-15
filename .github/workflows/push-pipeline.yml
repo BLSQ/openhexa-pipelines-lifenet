@@ -1,8 +1,9 @@
 name: Push pipeline on OpenHEXA
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "**"
 
 jobs:
   deploy:
@@ -23,5 +24,4 @@ jobs:
           token: ${{ secrets.OH_TOKEN }}
       - name: Push pipeline to OpenHEXA
         run: |
-          cd moodle_extract && openhexa pipelines push . --yes
-
+          openhexa pipelines push .moodle_extract/ -n ${{ github.ref_name }} --yes
