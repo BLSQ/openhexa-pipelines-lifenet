@@ -18,7 +18,7 @@ def moodle_extract(output_dir: str):
     """
     con = workspace.custom_connection("moodle-database")
     db = f"mysql://{con.username}:{con.password}@{con.host}:{con.port}/{con.dbname}"
-    current_run.log_info(f"Conneced to database {con.host}/{con.dbname} with user {con.username}")
+    current_run.log_info(f"Connected to database {con.host}/{con.dbname} with user {con.username}")
     output_dir = Path(workspace.files_path, Path(output_dir))
     os.makedirs(output_dir, exist_ok=True)
 
