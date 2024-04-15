@@ -50,7 +50,7 @@ def moodle_to_dhis2(import_mode: str, import_strategy: str, input_dir: str, outp
 
     Pipeline functions should only call tasks and should never perform IO operations or expensive computations.
     """
-    con = workspace.dhis2_connection("moodle-lifenet")
+    con = workspace.dhis2_connection("lifenet")
     dhis2 = DHIS2(con, Path(workspace.files_path, ".cache"))
     current_run.log_info(f"Connected to DHIS2 instance {con.url} with user {con.username}")
 
