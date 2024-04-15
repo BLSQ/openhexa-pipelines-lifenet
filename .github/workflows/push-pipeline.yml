@@ -27,5 +27,5 @@ jobs:
           openhexa pipelines push moodle_extract \
             -n ${{ github.ref_name }} \
             -l "https://github.com/BLSQ/openhexa-pipelines-lifenet/commit/${{ github.sha }}" \
-            -d {{ github.ref_name }} \
+            -d ${{ github.ref_name }} \
             --yes
