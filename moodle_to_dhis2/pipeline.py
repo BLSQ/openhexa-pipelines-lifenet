@@ -91,7 +91,7 @@ def sync_tracked_entities(dhis2: DHIS2, input_dir: Path, output_dir: Path):
 
     with open(Path(output_dir, "tracked_entities_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "tracked_entities_payload.json"))
+    current_run.add_file_output(os.path.join(output_dir, "tracked_entities_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, tracked_entities=payload)
 
@@ -101,7 +101,7 @@ def sync_tracked_entities(dhis2: DHIS2, input_dir: Path, output_dir: Path):
             f,
             indent=True,
         )
-        current_run.add_file_output(os.path.join(output_dir, "tracked_entities_report.json"))
+    current_run.add_file_output(os.path.join(output_dir, "tracked_entities_report.json"))
 
     return True
 
@@ -122,13 +122,13 @@ def sync_grade_enrollments(
 
     with open(Path(output_dir, "grade_enrollments_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "grade_enrollments_payload.json"))
+    current_run.add_file_output(os.path.join(output_dir, "grade_enrollments_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, enrollments=payload)
 
     with open(Path(output_dir, "grade_enrollments_report.json"), "w") as f:
         json.dump(report, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "grade_enrollments_report.json"))
+    current_run.add_file_output(os.path.join(output_dir, "grade_enrollments_report.json"))
 
     return True
 
@@ -204,13 +204,13 @@ def sync_grade_events(dhis2: DHIS2, input_dir: Path, output_dir: Path, wait: boo
 
     with open(Path(output_dir, "grade_events_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "grade_events_payload.json"))
+    current_run.add_file_output(os.path.join(output_dir, "grade_events_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, events=payload)
 
     with open(Path(output_dir, "grade_events_report.json"), "w") as f:
         json.dump(report, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "grade_events_report.json"))
+    current_run.add_file_output(os.path.join(output_dir, "grade_events_report.json"))
 
     return True
 
@@ -261,13 +261,13 @@ def sync_enrollment_events(
 
     with open(Path(output_dir, "enrollments_events_payload.json"), "w") as f:
         json.dump(payload, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "enrollments_events_payload.json"))
+    current_run.add_file_output(os.path.join(output_dir, "enrollments_events_payload.json"))
 
     report = push_to_tracker(dhis2=dhis2, events=payload)
 
     with open(Path(output_dir, "enrollments_events_report.json"), "w") as f:
         json.dump(report, f, indent=True)
-        current_run.add_file_output(os.path.join(output_dir, "enrollments_events_report.json"))
+    current_run.add_file_output(os.path.join(output_dir, "enrollments_events_report.json"))
 
     return True
 
