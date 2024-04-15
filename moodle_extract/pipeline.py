@@ -53,8 +53,8 @@ def download(db: str, dst_dir: Path):
         df.write_csv(dst_file_csv)
 
         if get_environment() == Environment.CLOUD_PIPELINE:
-            current_run.add_file_output(dst_file_pqt)
-            current_run.add_file_output(dst_file_csv)
+            current_run.add_file_output(dst_file_pqt.as_posix())
+            current_run.add_file_output(dst_file_csv.as_posix())
 
     return True
 
