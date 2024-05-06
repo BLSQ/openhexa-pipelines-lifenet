@@ -91,7 +91,7 @@ def get_organisation_units(ou_group_id:str, conn_identifier:str):
     for i in json_response['organisationUnits']:
         org_unit_ids.append(i['id'])
 
-    return org_unit_idscd ..
+    return org_unit_ids
 
 
 @lifenet___hmiss.task
