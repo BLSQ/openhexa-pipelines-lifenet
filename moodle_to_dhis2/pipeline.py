@@ -485,7 +485,7 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
                     "program": ENROLLMENTS_PROGRAM_UID,
                     "event": uid,
                     "programStage": ENROLLMENTS_PROGRAM_STAGE_UID,
-                    "orgUnit": enrol["orgUnit"],
+                    "orgUnit": enrol["org_unit"],
                     "trackedEntity": enrol["trackedEntity"],
                     "occurredAt": enrol["time_modified"],
                     "dataValues": data_values,
