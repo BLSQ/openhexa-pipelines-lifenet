@@ -3,8 +3,8 @@ name: Push "Moodle to DHIS2" pipeline
 on:
   push:
     paths:
-      - ".github/workflows/**"
-      - "moodle_to_dhis2/push-moodle-to-dhis2.yml"
+      - ".github/workflows/push-moodle-to-dhis2.yml"
+      - "moodle_to_dhis2/**"
 
 jobs:
   deploy:
