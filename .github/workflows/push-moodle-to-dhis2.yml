@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - ".github/workflows/**"
-      - "moodle_to_dhis2/**"
+      - "moodle_to_dhis2/push-moodle-to-dhis2.yml"
 
 jobs:
   deploy:
@@ -27,5 +27,5 @@ jobs:
         run: |
           openhexa pipelines push moodle_to_dhis2 \
             -n ${{ github.sha }} \
-            -l "https://github.com/BLSQ/openhexa-pipelines-lifenet/commit/${{ github.sha }}"
+            -l "https://github.com/BLSQ/openhexa-pipelines-lifenet/commit/${{ github.sha }}" \
             --yes
