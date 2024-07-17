@@ -517,6 +517,15 @@ def post(dhis2: DHIS2, payload: dict, params: dict = None) -> bool:
     if params:
         r_params.update(params)
 
+    # check if payload is empty before starting import job
+    empty = True
+    for payload_type in ["events", "trackedEntities", "enrollments"]:
+        if payload.get(payload_type):
+            empty = False
+    if empty:
+        current_run.log_info("No change detected, skipping import job")
+        return True
+
     # start import job
     r = dhis2.api.post(
         endpoint="tracker",
@@ -525,6 +534,7 @@ def post(dhis2: DHIS2, payload: dict, params: dict = None) -> bool:
     )
     job_uid = r.json()["response"]["id"]
     current_run.log_info(f"Started tracker import job {job_uid}. Waiting for completion...")
+    current_run.log_info(f"Import job progress available at {dhis2.api.url}/tracker/jobs{job_uid}")
 
     # request job status and wait for completion
     completed = False
@@ -547,6 +557,7 @@ def post(dhis2: DHIS2, payload: dict, params: dict = None) -> bool:
         current_run.log_info(
             f"Import job {job_uid} completed (created: {created}, updated: {updated}, deleted: {deleted}, ignored: {ignored})"
         )
+        current_run.log_info(f"Full report available at {dhis2.api.url}/tracker/jobs/{job_uid}/report")
     else:
         current_run.log_error(
             f"Import job {job_uid} failed. Full report available at {dhis2.api.url}/tracker/jobs/{job_uid}/report"
