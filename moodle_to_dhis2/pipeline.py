@@ -212,11 +212,26 @@ def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_en
             "attributes": attributes,
         }
 
-        # only compare on keys that are also present in src entity
-        dst_entity = {k: v for k, v in dst_entity.items() if k in src_entity}
+        def _get_attribute_value(attributes: List[dict], dx_uid: str) -> str | int | None:
+            """Get attribute value from list of dict format in payload."""
+            for attr in attributes:
+                if attr["attribute"] == dx_uid:
+                    return attr["value"]
+            return None
+
+        # check for changes before adding to payload
+        changed = False
+        for key in ["trackedEntity", "trackedEntityType", "orgUnit"]:
+            if src_entity[key] != dst_entity[key]:
+                changed = True
+        for name, dx in TRACKED_ENTITY_ATTRIBUTES.items():
+            src = _get_attribute_value(src_entity["attributes"], dx)
+            dst = _get_attribute_value(dst_entity["attributes"], dx)
+            if src != dst:
+                changed = True
 
         # add entity to payload only if changes are detected
-        if src_entity != dst_entity:
+        if changed:
             payload.append(src_entity)
 
     return payload
