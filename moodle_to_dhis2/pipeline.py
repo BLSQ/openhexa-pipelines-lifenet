@@ -89,7 +89,7 @@ ENROLLMENTS_PROGRAM_STAGE_UID = "mHBassGTx51"
     name="Import mode",
     type=str,
     choices=["VALIDATE", "COMMIT"],
-    default="VALIDATE",
+    default="COMMIT",
 )
 @parameter(
     "import_strategy",
@@ -98,9 +98,12 @@ ENROLLMENTS_PROGRAM_STAGE_UID = "mHBassGTx51"
     choices=["CREATE_AND_UPDATE", "CREATE", "UPDATE"],
     default="CREATE_AND_UPDATE",
 )
+@parameter(
+    "validation_mode", name="Validation mode", type=str, choices=["FULL", "FAIL_FAST", "SKIP"], default="FAIL_FAST"
+)
 @parameter("input_dir", name="Input directory", type=str, default="moodle/data/raw")
 @parameter("output_dir", name="Output directory", type=str, default="moodle/dhis2")
-def moodle_to_dhis2(import_mode: str, import_strategy: str, input_dir: str, output_dir: str):
+def moodle_to_dhis2(import_mode: str, import_strategy: str, validation_mode: str, input_dir: str, output_dir: str):
     """Write your pipeline orchestration here.
 
     Pipeline functions should only call tasks and should never perform IO operations or expensive computations.
@@ -110,7 +113,13 @@ def moodle_to_dhis2(import_mode: str, import_strategy: str, input_dir: str, outp
     if not output_dir.exists():
         os.makedirs(output_dir, exist_ok=True)
 
-    sync(input_dir=input_dir, output_dir=output_dir)
+    sync(
+        import_mode=import_mode,
+        import_strategy=import_strategy,
+        validation_mode=validation_mode,
+        input_dir=input_dir,
+        output_dir=output_dir,
+    )
 
 
 def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.DataFrame) -> pl.DataFrame:
@@ -510,12 +519,9 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
     return payload
 
 
-def post(dhis2: DHIS2, payload: dict, params: dict = None) -> bool:
+def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, validation_mode: str) -> bool:
     """Push tracked entities, program enrollments or events to DHIS2."""
-    DEFAULT_PARAMS = {"importMode": "COMMIT", "importStrategy": "CREATE_AND_UPDATE", "validationMode": "FAIL_FAST"}
-    r_params = DEFAULT_PARAMS
-    if params:
-        r_params.update(params)
+    params = {"importMode": import_mode, "importStrategy": import_strategy, "validationMode": validation_mode}
 
     # check if payload is empty before starting import job
     empty = True
@@ -530,7 +536,7 @@ def post(dhis2: DHIS2, payload: dict, params: dict = None) -> bool:
     r = dhis2.api.post(
         endpoint="tracker",
         json=payload,
-        params=r_params,
+        params=params,
     )
     job_uid = r.json()["response"]["id"]
     current_run.log_info(f"Started tracker import job {job_uid}. Waiting for completion...")
@@ -570,7 +576,7 @@ def post(dhis2: DHIS2, payload: dict, params: dict = None) -> bool:
 
 
 @moodle_to_dhis2.task
-def sync(input_dir: Path, output_dir: Path):
+def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir: Path, output_dir: Path):
     dhis2 = DHIS2(workspace.dhis2_connection("lifenet"))
 
     # load and transform moodle users data
@@ -582,7 +588,13 @@ def sync(input_dir: Path, output_dir: Path):
     payload = build_tracked_entities_payload(dhis2, users, tracked_entities)
     with open(output_dir / "tracked_entities.json", "w") as f:
         json.dump(payload, f)
-    post(dhis2, {"trackedEntities": payload})
+    post(
+        dhis2,
+        payload={"trackedEntities": payload},
+        import_mode=import_mode,
+        import_strategy=import_strategy,
+        validation_mode=validation_mode,
+    )
 
     # reload users with up-to-date trackedEntities uid
     users = pl.read_parquet(input_dir / "users.parquet")
@@ -593,7 +605,13 @@ def sync(input_dir: Path, output_dir: Path):
     # push program enrollments
     enrollments = get_enrollments(dhis2, LEARNING_PROGRAM_UID)
     payload = build_enrollments_payload(dhis2, users, enrollments, LEARNING_PROGRAM_UID)
-    post(dhis2, {"enrollments": payload})
+    post(
+        dhis2,
+        payload={"enrollments": payload},
+        import_mode=import_mode,
+        import_strategy=import_strategy,
+        validation_mode=validation_mode,
+    )
     with open(output_dir / "enrollments.json", "w") as f:
         json.dump(payload, f)
 
@@ -617,7 +635,13 @@ def sync(input_dir: Path, output_dir: Path):
 
     # push moodle grades events
     payload = build_grade_events_payload(dhis2, grades, events)
-    post(dhis2, {"events": payload})
+    post(
+        dhis2,
+        payload={"events": payload},
+        import_mode=import_mode,
+        import_strategy=import_strategy,
+        validation_mode=validation_mode,
+    )
     with open(output_dir / "events_grades.json", "w") as f:
         json.dump(payload, f)
 
@@ -641,7 +665,13 @@ def sync(input_dir: Path, output_dir: Path):
 
     # push moodle course enrollments events
     payload = build_enrollment_events_payload(dhis2, enrollments, events)
-    post(dhis2, {"events": payload})
+    post(
+        dhis2,
+        payload={"events": payload},
+        import_mode=import_mode,
+        import_strategy=import_strategy,
+        validation_mode=validation_mode,
+    )
     with open(output_dir / "events_enrollments.json", "w") as f:
         json.dump(payload, f)
 
