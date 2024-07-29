@@ -212,7 +212,7 @@ def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_en
         # therefore we use a new UID
         else:
             uid = uids.pop()
-            dst_entity = {}
+            dst_entity = None
 
         src_entity = {
             "trackedEntity": uid,
@@ -230,14 +230,17 @@ def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_en
 
         # check for changes before adding to payload
         changed = False
-        for key in ["trackedEntity", "trackedEntityType", "orgUnit"]:
-            if src_entity[key] != dst_entity[key]:
-                changed = True
-        for name, dx in TRACKED_ENTITY_ATTRIBUTES.items():
-            src = _get_attribute_value(src_entity["attributes"], dx)
-            dst = _get_attribute_value(dst_entity["attributes"], dx)
-            if src != dst:
-                changed = True
+        if not dst_entity:
+            changed = True
+        else:
+            for key in ["trackedEntity", "trackedEntityType", "orgUnit"]:
+                if src_entity[key] != dst_entity[key]:
+                    changed = True
+            for name, dx in TRACKED_ENTITY_ATTRIBUTES.items():
+                src = _get_attribute_value(src_entity["attributes"], dx)
+                dst = _get_attribute_value(dst_entity["attributes"], dx)
+                if src != dst:
+                    changed = True
 
         # add entity to payload only if changes are detected
         if changed:
@@ -522,7 +525,6 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
 def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, validation_mode: str) -> bool:
     """Push tracked entities, program enrollments or events to DHIS2."""
     params = {"importMode": import_mode, "importStrategy": import_strategy, "validationMode": validation_mode}
-
     # check if payload is empty before starting import job
     empty = True
     for payload_type in ["events", "trackedEntities", "enrollments"]:
