@@ -525,6 +525,7 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
 def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, validation_mode: str) -> bool:
     """Push tracked entities, program enrollments or events to DHIS2."""
     params = {"importMode": import_mode, "importStrategy": import_strategy, "validationMode": validation_mode}
+    return
     # check if payload is empty before starting import job
     empty = True
     for payload_type in ["events", "trackedEntities", "enrollments"]:
@@ -653,6 +654,10 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
     courses = pl.read_parquet(input_dir / "courses.parquet")
     completions = pl.read_parquet(input_dir / "completions.parquet")
     events = get_events(dhis2, ENROLLMENTS_PROGRAM_UID, ENROLLMENTS_DATA_VALUES, include_deleted=False)
+
+    if "completion_status" not in events.columns:
+        events = events.with_columns(pl.lit(None).alias("completion_status"))
+
     events = events.with_columns(
         [
             pl.col("user_id").cast(int),
