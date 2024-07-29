@@ -525,7 +525,6 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
 def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, validation_mode: str) -> bool:
     """Push tracked entities, program enrollments or events to DHIS2."""
     params = {"importMode": import_mode, "importStrategy": import_strategy, "validationMode": validation_mode}
-    return
     # check if payload is empty before starting import job
     empty = True
     for payload_type in ["events", "trackedEntities", "enrollments"]:
