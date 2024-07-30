@@ -541,7 +541,7 @@ def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, va
     )
     job_uid = r.json()["response"]["id"]
     current_run.log_info(f"Started tracker import job {job_uid}. Waiting for completion...")
-    current_run.log_info(f"Import job progress available at {dhis2.api.url}/tracker/jobs{job_uid}")
+    current_run.log_info(f"Import job progress available at {dhis2.api.url}/tracker/jobs/{job_uid}")
 
     # request job status and wait for completion
     completed = False
