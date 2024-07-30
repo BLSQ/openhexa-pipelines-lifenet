@@ -263,8 +263,7 @@ def build_enrollments_payload(
         if "trackedEntity" in enrollments.columns and "orgUnit" in enrollments.columns:
             try:
                 dst_enrol = enrollments.row(
-                    by_predicate=(pl.col("trackedEntity") == user["trackedEntity"])
-                    & (pl.col("orgUnit") == user["org_unit"]),
+                    by_predicate=(pl.col("trackedEntity") == user["trackedEntity"]),
                     named=True,
                 )
                 uid = dst_enrol["enrollment"]
