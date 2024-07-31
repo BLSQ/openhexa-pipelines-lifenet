@@ -536,6 +536,56 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
     return payload
 
 
+def add_missing_options(dhis2: DHIS2, courses: pl.DataFrame):
+    """Add missing options in option sets for courses and course modules."""
+    courses = courses.filter(pl.col("category_id").is_not_null())
+
+    # course option set
+    OPTION_SET_UID = "uNtNb2JcvWM"
+
+    # get existing options
+    pages = [p for p in dhis2.api.get_paged("options", params={"fields": "id,name,code,optionSet"})]
+    r = dhis2.api.merge_pages(pages)
+    options = pl.DataFrame(r["options"])
+    options = options.with_columns(pl.col("optionSet").struct.field("id").alias("optionSet"))
+    course_options = options.filter(pl.col("optionSet") == OPTION_SET_UID)
+
+    # identify missing options
+    missing = courses.filter(pl.col("course_id").is_in(course_options["code"].cast(int)).not_())
+
+    # add missing course options
+    for course in missing.iter_rows(named=True):
+        current_run.log_info(f"Adding missing course option \"{course['course_name']}\" to DHIS2")
+
+        r = dhis2.api.get("system/id")
+        uid = r.json()["codes"][0]
+
+        payload = {"id": uid, "name": course["course_name"], "code": course["course_id"]}
+
+        r = dhis2.api.post("options", json=payload, params={"importStrategy": "CREATE_OR_UPDATE"})
+        r = dhis2.api.post(f"optionSets/{OPTION_SET_UID}/options/{uid}", params={"importStrategy": "CREATE_OR_UPDATE"})
+
+    # course module option set
+    OPTION_SET_UID = "rzmshuuPjEV"
+
+    modules = courses.select(["category_id", "category_name"]).unique()
+    modules = modules.filter(pl.col("category_id") != 54)  # "Moodle App Test Courses"
+    module_options = options.filter(pl.col("optionSet") == OPTION_SET_UID)
+    missing = modules.filter(pl.col("category_id").is_in(module_options["code"].cast(int)).not_())
+
+    # add missing course module options
+    for module in missing.iter_rows(named=True):
+        current_run.log_info(f"Adding missing course module option \"{module['category_name']}\" to DHIS2")
+
+        r = dhis2.api.get("system/id")
+        uid = r.json()["codes"][0]
+
+        payload = {"id": uid, "name": module["category_name"], "code": module["category_id"]}
+
+        r = dhis2.api.post("options", json=payload, params={"importStrategy": "CREATE_OR_UPDATE"})
+        r = dhis2.api.post(f"optionSets/{OPTION_SET_UID}/options/{uid}", params={"importStrategy": "CREATE_OR_UPDATE"})
+
+
 def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, validation_mode: str) -> bool:
     """Push tracked entities, program enrollments or events to DHIS2."""
     params = {"importMode": import_mode, "importStrategy": import_strategy, "validationMode": validation_mode}
@@ -594,6 +644,10 @@ def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, va
 @moodle_to_dhis2.task
 def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir: Path, output_dir: Path):
     dhis2 = DHIS2(workspace.dhis2_connection("lifenet"))
+
+    # add missing course and module options to DHIS2 if needed
+    courses = pl.read_parquet(input_dir / "courses.parquet")
+    add_missing_options(dhis2, courses)
 
     # load and transform moodle users data
     users = pl.read_parquet(input_dir / "users.parquet")
