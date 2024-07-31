@@ -172,6 +172,21 @@ def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.Data
             current_run.log_info(f"Ignoring user {user_id} because they are linked to multiple entities")
             users = users.filter(pl.col("user_id") != user_id)
 
+    # ignore tracked entities whose org unit has changed (not supported by current data
+    # model in dhis2)
+    for user in users.iter_rows(named=True):
+        if user["trackedEntity"] in tracked_entities["trackedEntity"]:
+            tracked_entity = tracked_entities.row(
+                by_predicate=pl.col("trackedEntity") == user["trackedEntity"], named=True
+            )
+            src_ou = user["org_unit"]
+            dst_ou = tracked_entity["orgUnit"]
+            if src_ou != dst_ou:
+                current_run.log_info(
+                    f"Ignoring user {user['user_id']} because its org unit has changed (not supported)"
+                )
+                users = users.filter(pl.col("user_id") != user["user_id"])
+
     # convert datetimes to string as expected by DHIS2
     users = users.with_columns(
         [pl.col("time_created").dt.to_string(DHIS2_DATE_FORMAT), pl.col("last_access").dt.to_string(DHIS2_DATE_FORMAT)]
