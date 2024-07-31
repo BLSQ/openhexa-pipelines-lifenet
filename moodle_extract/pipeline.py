@@ -44,9 +44,7 @@ def download(db: str, dst_dir: Path):
         try:
             assert len(df) >= len_old
         except AssertionError:
-            current_run.log_error(
-                f"New version of file {name}.parquet has less row than previous one"
-            )
+            current_run.log_warning(f"New version of file {name}.parquet has less row than previous one")
             raise
 
         df.write_parquet(dst_file_pqt)
