@@ -256,6 +256,8 @@ def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_en
                 dst = _get_attribute_value(dst_entity["attributes"], dx)
                 if src != dst:
                     changed = True
+                if src is None and dst is None:
+                    changed = False
 
         # add entity to payload only if changes are detected
         if changed:
@@ -415,8 +417,9 @@ def build_grade_events_payload(dhis2: DHIS2, grades: pl.DataFrame, events: pl.Da
         # for each data value, compare source and destination
         same = True
         for col in LEARNING_DATA_VALUES:
-            if grade.get(col) != dst.get(col):
-                same = False
+            if grade.get(col):
+                if grade.get(col) != dst.get(col):
+                    same = False
 
         if not same:
             payload.append(
@@ -520,8 +523,9 @@ def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, eve
         # for each data value, compare source and destination
         same = True
         for col in ENROLLMENTS_DATA_VALUES:
-            if enrol.get(col) != dst.get(col):
-                same = False
+            if enrol.get(col):
+                if enrol.get(col) != dst.get(col):
+                    same = False
 
         if not same:
             payload.append(
