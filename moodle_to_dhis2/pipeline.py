@@ -649,6 +649,7 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
     dhis2 = DHIS2(workspace.dhis2_connection("lifenet"))
 
     # add missing course and module options to DHIS2 if needed
+    current_run.log_info("Checking course and module option sets in DHIS2")
     courses = pl.read_parquet(input_dir / "courses.parquet")
     add_missing_options(dhis2, courses)
 
@@ -659,6 +660,7 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
 
     # push users as tracked entities
     payload = build_tracked_entities_payload(dhis2, users, tracked_entities)
+    current_run.log_info(f"Importing {len(payload)} tracked entities")
     with open(output_dir / "tracked_entities.json", "w") as f:
         json.dump(payload, f)
     post(
@@ -678,6 +680,7 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
     # push program enrollments
     enrollments = get_enrollments(dhis2, LEARNING_PROGRAM_UID)
     payload = build_enrollments_payload(dhis2, users, enrollments, LEARNING_PROGRAM_UID)
+    current_run.log_info(f"Importing {len(payload)} program enrollments")
     post(
         dhis2,
         payload={"enrollments": payload},
@@ -708,6 +711,7 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
 
     # push moodle grades events
     payload = build_grade_events_payload(dhis2, grades, events)
+    current_run.log_info(f"Importing {len(payload)} grades as events")
     post(
         dhis2,
         payload={"events": payload},
@@ -742,6 +746,7 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
 
     # push moodle course enrollments events
     payload = build_enrollment_events_payload(dhis2, enrollments, events)
+    current_run.log_info(f"Importing {len(payload)} course enrollments as events")
     post(
         dhis2,
         payload={"events": payload},
