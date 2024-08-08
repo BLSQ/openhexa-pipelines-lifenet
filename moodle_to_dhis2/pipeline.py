@@ -483,6 +483,9 @@ def transform_enrollments(
         how="left",
     )
 
+    # ignore enrollments to "Moodle Test Courses"
+    enrollments = enrollments.filter(pl.col("module") != 54)
+
     return enrollments
 
 
