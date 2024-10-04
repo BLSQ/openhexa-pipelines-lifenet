@@ -1,9 +1,10 @@
-name: Push pipeline on OpenHEXA
+name: Push "Moodle to DHIS2" pipeline
 
 on:
   push:
-    tags:
-      - "**"
+    paths:
+      - ".github/workflows/push-moodle-to-dhis2.yml"
+      - "moodle_to_dhis2/**"
 
 jobs:
   deploy:
@@ -15,7 +16,7 @@ jobs:
 
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Configure OpenHEXA CLI
         uses: blsq/openhexa-cli-action@v1
@@ -24,8 +25,7 @@ jobs:
           token: ${{ secrets.OH_TOKEN }}
       - name: Push pipeline to OpenHEXA
         run: |
-          openhexa pipelines push moodle_extract \
-            -n ${{ github.ref_name }} \
+          openhexa pipelines push moodle_to_dhis2 \
+            -n ${{ github.sha }} \
             -l "https://github.com/BLSQ/openhexa-pipelines-lifenet/commit/${{ github.sha }}" \
-            -d ${{ github.ref_name }} \
             --yes
