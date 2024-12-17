@@ -30,7 +30,7 @@ def dhis2_bi_extract():
     monitrac = DHIS2(con)
     get_events(monitrac)
 
-    #get_aggregate(monitrac)
+    get_aggregate(monitrac)
 
 
 @dhis2_bi_extract.task
@@ -46,7 +46,7 @@ def get_events(monitrac: DHIS2):
     )
 
     programs = []
-    for prog in json.dumps(r)["programs"]:
+    for prog in r["programs"]:
         programs.append(prog)
 
     #Get events from DHIS2
@@ -69,7 +69,7 @@ def get_events(monitrac: DHIS2):
             params=PARAMS
         )
         events_extract = []
-        for event in json.dumps(r)["instances"]:
+        for event in r["instances"]:
             events_extract.append(event)
 
         code = program["code"]
@@ -98,9 +98,9 @@ def get_events(monitrac: DHIS2):
         engine = create_engine(workspace.database_url)
         data = events.to_pandas()
 
-        # Write data
+        # Write data into db
         data.to_sql(program["code"], con=engine, if_exists="replace", index_label="id", chunksize=100)
-        current_run.log_info(f"Loading {len(data)} {code} Events into database")
+        current_run.log_info(f"Successflly oaded {len(data)} {code} Events into database")
 
 
 @dhis2_bi_extract.task
@@ -120,7 +120,7 @@ def get_aggregate(monitrac: DHIS2):
     )
 
     data_sets = []
-    for s in json.dumps(r)["dataSets"]:
+    for s in r["dataSets"]:
         data_sets.append(s)
     current_run.log_info(f"Processing {len(data_sets)} datasets")
 
@@ -145,9 +145,9 @@ def get_aggregate(monitrac: DHIS2):
                 df = monitrac.meta.add_dx_name_column(df, dx_id_column="dataElement")
                 df = monitrac.meta.add_coc_name_column(df, coc_column="categoryOptionCombo")
                 df = monitrac.meta.add_org_unit_name_column(df, org_unit_id_column="orgUnit")
-
                 
                 # Write data into OX db
+                engine = create_engine(workspace.database_url)
                 data = df.to_pandas()
                 data.to_sql(ds_name, con=engine, if_exists="replace", index_label="id", chunksize=100)
                 current_run.log_info(f"Loading {len(data)} {ds_name} aggregate records into database")        

@@ -18,7 +18,6 @@ TRACKED_ENTITY_ATTRIBUTES = { # Tracker Program
     "phase": "BhEi9vjZxzH",
 }
 
-
 def get_org_units(ous: str):
     ou_ids = []
     for ou in ous:
@@ -116,7 +115,7 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
         },
     )
 
-    for entity in json.dumps(r)["instances"]:
+    for entity in r["instances"]:
         for attr in entity["attributes"]:
             entity[mapping[attr["attribute"]]] = attr["value"]
         entities.append(entity)
@@ -159,7 +158,7 @@ def get_enrollments(dhis2: DHIS2, program_uid: str) -> pl.DataFrame:
         params={"ouMode": "ALL", "program": program_uid, "skipPaging": True},
     )
 
-    for enrol in json.dumps(r)["instances"]:
+    for enrol in r["instances"]:
         enrollments.append(enrol)
 
     df = pl.DataFrame(enrollments)
