@@ -8,7 +8,7 @@ from datetime import datetime, date
 from openhexa.toolbox.dhis2 import DHIS2
 from openhexa.sdk import workspace
 
-from sqlalchemy import create_engine, Integer, String
+from sqlalchemy import create_engine
 
 from helper import (
     TRACKED_ENTITY_TYPE,
@@ -19,7 +19,6 @@ from helper import (
     process_tracker_event,
     get_tracked_entities,
     process_dx_names
-
 )
 
 
@@ -36,6 +35,29 @@ def dhis2_bi_extract():
 @dhis2_bi_extract.task
 def get_events(monitrac: DHIS2):
     current_run.log_info("Fetching events data")
+    current_run.log_info("Processing option sets")
+
+    OPTION_SETS_PARAMS = {
+        "fields": "name,id,code,options[id,code,name]",
+        "paging": False
+    }
+    r = monitrac.api.get(
+        endpoint="optionSets",
+        params=OPTION_SETS_PARAMS
+    )
+
+    option_sets = r["optionSets"]
+
+    for opotion_set in option_sets:
+        df = pl.DataFrame(opotion_set["options"])
+        df = df.with_columns(uid = df["id"])
+        engine = create_engine(workspace.database_url)
+        data = df.to_pandas()
+        if 'id' in df.columns:
+            data.drop('id', axis=1, inplace=True)
+        data.to_sql(os["name"], con=engine, if_exists="replace", index_label="id", chunksize=100)
+        print(f"Finished option set {os["name"]}")
+
     PROG_PARAMS = {
         "fields": "name,id,code,programType,organisationUnits,programStages",
         "paging": False
@@ -51,16 +73,18 @@ def get_events(monitrac: DHIS2):
 
     #Get events from DHIS2
     for program in programs:
-        enrollments = pl.DataFrame()
         tracked_entities = pl.DataFrame()
         events = pl.DataFrame()    
         rows = []
+        
+        today = date.today()
+        end_date = today.strftime("%Y-%m-%d")
 
         PARAMS = {
             "program": program["id"],
             "ouMode": "ACCESSIBLE",
             "occurredAfter": "2021-01-11",
-            "occurredBefore": "2024-11-10",
+            "occurredBefore": end_date,
             "skipPaging": True
         }
         
@@ -100,7 +124,7 @@ def get_events(monitrac: DHIS2):
 
         # Write data into db
         data.to_sql(program["code"], con=engine, if_exists="replace", index_label="id", chunksize=100)
-        current_run.log_info(f"Successflly oaded {len(data)} {code} Events into database")
+        current_run.log_info(f"Successflly loaded {len(data)} {code} Events into database")
 
 
 @dhis2_bi_extract.task
