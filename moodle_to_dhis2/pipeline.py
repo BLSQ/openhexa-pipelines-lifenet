@@ -83,7 +83,7 @@ ENROLLMENTS_PROGRAM_UID = "kOWbqri5tY2"
 ENROLLMENTS_PROGRAM_STAGE_UID = "mHBassGTx51"
 
 
-@pipeline("moodle-to-dhis2", name="moodle-to-dhis2")
+@pipeline("moodle-to-dhis2")
 @parameter(
     "import_mode",
     name="Import mode",
