@@ -531,7 +531,7 @@ def transform_enrollments(
 
     # get maximum completion state for a given user & course
     completions = (
-        completions.group_by(by=["user_id", "course_id"])
+        completions.group_by(["user_id", "course_id"])
         .max()
         .select(["user_id", "course_id", "completion_state"])
     )
@@ -644,7 +644,7 @@ def add_missing_options(dhis2: DHIS2, courses: pl.DataFrame):
     # add missing course options
     for course in missing.iter_rows(named=True):
         current_run.log_info(
-            f"Adding missing course option \"{course['course_name']}\" to DHIS2"
+            f'Adding missing course option "{course["course_name"]}" to DHIS2'
         )
 
         r = dhis2.api.get("system/id")
@@ -677,7 +677,7 @@ def add_missing_options(dhis2: DHIS2, courses: pl.DataFrame):
     # add missing course module options
     for module in missing.iter_rows(named=True):
         current_run.log_info(
-            f"Adding missing course module option \"{module['category_name']}\" to DHIS2"
+            f'Adding missing course module option "{module["category_name"]}" to DHIS2'
         )
 
         r = dhis2.api.get("system/id")
