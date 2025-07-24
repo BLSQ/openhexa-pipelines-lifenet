@@ -83,7 +83,7 @@ ENROLLMENTS_PROGRAM_UID = "kOWbqri5tY2"
 ENROLLMENTS_PROGRAM_STAGE_UID = "mHBassGTx51"
 
 
-@pipeline("moodle-to-dhis2", name="moodle-to-dhis2")
+@pipeline("moodle-to-dhis2")
 @parameter(
     "import_mode",
     name="Import mode",
@@ -99,17 +99,29 @@ ENROLLMENTS_PROGRAM_STAGE_UID = "mHBassGTx51"
     default="CREATE_AND_UPDATE",
 )
 @parameter(
-    "validation_mode", name="Validation mode", type=str, choices=["FULL", "FAIL_FAST", "SKIP"], default="FAIL_FAST"
+    "validation_mode",
+    name="Validation mode",
+    type=str,
+    choices=["FULL", "FAIL_FAST", "SKIP"],
+    default="FAIL_FAST",
 )
 @parameter("input_dir", name="Input directory", type=str, default="moodle/data/raw")
 @parameter("output_dir", name="Output directory", type=str, default="moodle/dhis2")
-def moodle_to_dhis2(import_mode: str, import_strategy: str, validation_mode: str, input_dir: str, output_dir: str):
+def moodle_to_dhis2(
+    import_mode: str,
+    import_strategy: str,
+    validation_mode: str,
+    input_dir: str,
+    output_dir: str,
+):
     """Write your pipeline orchestration here.
 
     Pipeline functions should only call tasks and should never perform IO operations or expensive computations.
     """
     input_dir = Path(workspace.files_path, input_dir)
-    output_dir = Path(workspace.files_path, output_dir, datetime.now().strftime("%Y-%m-%d_%H:%M:%s"))
+    output_dir = Path(
+        workspace.files_path, output_dir, datetime.now().strftime("%Y-%m-%d_%H:%M:%s")
+    )
     if not output_dir.exists():
         os.makedirs(output_dir, exist_ok=True)
 
@@ -122,7 +134,9 @@ def moodle_to_dhis2(import_mode: str, import_strategy: str, validation_mode: str
     )
 
 
-def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.DataFrame) -> pl.DataFrame:
+def transform_users(
+    dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.DataFrame
+) -> pl.DataFrame:
     """Prepare moodle user data to be pushed as tracked entities in DHIS2."""
     n = len(users)
     current_run.log_info(f"Processing {n} Moodle users")
@@ -135,7 +149,8 @@ def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.Data
 
     # ignore users with org units that are not included in both programs
     for program_name, program_uid in zip(
-        ["LifeNet Digital Learning", "Moodle Course Enrollments"], [LEARNING_PROGRAM_UID, ENROLLMENTS_PROGRAM_UID]
+        ["LifeNet Digital Learning", "Moodle Course Enrollments"],
+        [LEARNING_PROGRAM_UID, ENROLLMENTS_PROGRAM_UID],
     ):
         program_org_units = get_program_org_units(dhis2, program_uid)
         users = users.filter(pl.col("org_unit").is_in(program_org_units))
@@ -169,7 +184,9 @@ def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.Data
     duplicates = users.filter(pl.col("user_id").is_duplicated())
     if not duplicates.is_empty():
         for user_id in duplicates["user_id"].unique():
-            current_run.log_info(f"Ignoring user {user_id} because they are linked to multiple entities")
+            current_run.log_info(
+                f"Ignoring user {user_id} because they are linked to multiple entities"
+            )
             users = users.filter(pl.col("user_id") != user_id)
 
     # ignore tracked entities whose org unit has changed (not supported by current data
@@ -177,7 +194,8 @@ def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.Data
     for user in users.iter_rows(named=True):
         if user["trackedEntity"] in tracked_entities["trackedEntity"]:
             tracked_entity = tracked_entities.row(
-                by_predicate=pl.col("trackedEntity") == user["trackedEntity"], named=True
+                by_predicate=pl.col("trackedEntity") == user["trackedEntity"],
+                named=True,
             )
             src_ou = user["org_unit"]
             dst_ou = tracked_entity["orgUnit"]
@@ -189,13 +207,18 @@ def transform_users(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.Data
 
     # convert datetimes to string as expected by DHIS2
     users = users.with_columns(
-        [pl.col("time_created").dt.to_string(DHIS2_DATE_FORMAT), pl.col("last_access").dt.to_string(DHIS2_DATE_FORMAT)]
+        [
+            pl.col("time_created").dt.to_string(DHIS2_DATE_FORMAT),
+            pl.col("last_access").dt.to_string(DHIS2_DATE_FORMAT),
+        ]
     )
 
     return users
 
 
-def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.DataFrame) -> List[dict]:
+def build_tracked_entities_payload(
+    dhis2: DHIS2, users: pl.DataFrame, tracked_entities: pl.DataFrame
+) -> List[dict]:
     """Build JSON payload for tracked entities import."""
     uids = generate_uid(dhis2, n=len(users))
     payload = []
@@ -206,21 +229,28 @@ def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_en
         # transform entity attributes into a list of dict
         for column, value in user.items():
             if column in TRACKED_ENTITY_ATTRIBUTES and value is not None:
-                attributes.append({"attribute": TRACKED_ENTITY_ATTRIBUTES[column], "value": value})
+                attributes.append(
+                    {"attribute": TRACKED_ENTITY_ATTRIBUTES[column], "value": value}
+                )
 
         # check if the user alreay belongs to a tracked entity in DHIS2
         # if they do, get current data associated with the tracked entity for comparison
         # with the new data extracted from Moodle
         if user.get("trackedEntity"):
             uid = user["trackedEntity"]
-            dst_entity = tracked_entities.row(by_predicate=pl.col("trackedEntity") == uid, named=True)
+            dst_entity = tracked_entities.row(
+                by_predicate=pl.col("trackedEntity") == uid, named=True
+            )
 
             # rebuild the payload from the data extracted from DHIS2
             dst_entity["attributes"] = []
             for column in dst_entity:
                 if column in TRACKED_ENTITY_ATTRIBUTES:
                     dst_entity["attributes"].append(
-                        {"attribute": TRACKED_ENTITY_ATTRIBUTES[column], "value": dst_entity[column]}
+                        {
+                            "attribute": TRACKED_ENTITY_ATTRIBUTES[column],
+                            "value": dst_entity[column],
+                        }
                     )
 
         # the user do not belong to an existing tracked entity in DHIS2
@@ -236,7 +266,9 @@ def build_tracked_entities_payload(dhis2: DHIS2, users: pl.DataFrame, tracked_en
             "attributes": attributes,
         }
 
-        def _get_attribute_value(attributes: List[dict], dx_uid: str) -> str | int | None:
+        def _get_attribute_value(
+            attributes: List[dict], dx_uid: str
+        ) -> str | int | None:
             """Get attribute value from list of dict format in payload."""
             for attr in attributes:
                 if attr["attribute"] == dx_uid:
@@ -305,7 +337,14 @@ def build_enrollments_payload(
         dst_enrol = {k: v for k, v in dst_enrol.items() if k in src_enrol}
 
         same = True
-        for key in ["enrollment", "trackedEntity", "program", "status", "orgUnit", "enrolledAt"]:
+        for key in [
+            "enrollment",
+            "trackedEntity",
+            "program",
+            "status",
+            "orgUnit",
+            "enrolledAt",
+        ]:
             if src_enrol.get(key) != dst_enrol.get(key):
                 same = False
 
@@ -329,7 +368,9 @@ def transform_grades(
 
     # ignore incomplete course entries
     courses = courses.filter(
-        (pl.col("category").is_not_null()) & (pl.col("module").is_not_null()) & (pl.col("course_name").is_not_null())
+        (pl.col("category").is_not_null())
+        & (pl.col("module").is_not_null())
+        & (pl.col("course_name").is_not_null())
     )
 
     # join course data to grades
@@ -350,7 +391,9 @@ def transform_grades(
     # ignore grade events without trackedEntity UID
     grades = grades.filter(pl.col("trackedEntity").is_not_null())
     if n - len(grades) > 0:
-        current_run.log_info(f"Skipping {n - len(grades)} grade events not linked to any tracked entity")
+        current_run.log_info(
+            f"Skipping {n - len(grades)} grade events not linked to any tracked entity"
+        )
     n = len(grades)
 
     # join enrollment UID if they already exist
@@ -360,23 +403,33 @@ def transform_grades(
         how="left",
     )
     if n - len(grades) > 0:
-        current_run.log_info(f"Skipping {n - len(grades)} grade events not linked to any enrollment")
+        current_run.log_info(
+            f"Skipping {n - len(grades)} grade events not linked to any enrollment"
+        )
     n = len(grades)
 
     # transform the course_stage column into 2 values: PRE_TEST and POST_TEST
     grades = grades.with_columns(
         pl.when(pl.col("item_name").str.contains(r"\b(p|P)r(e|é|é)\b"))
         .then(pl.lit("PRE_TEST"))
-        .otherwise(pl.when(pl.col("item_name").str.contains(r"\b(p|P)ost\b")).then(pl.lit("POST_TEST")).otherwise(None))
+        .otherwise(
+            pl.when(pl.col("item_name").str.contains(r"\b(p|P)ost\b"))
+            .then(pl.lit("POST_TEST"))
+            .otherwise(None)
+        )
         .alias("course_stage")
     )
 
     # convert datetime to string as expected by DHIS2
-    grades = grades.with_columns(pl.col("time_modified").dt.to_string(DHIS2_DATE_FORMAT))
+    grades = grades.with_columns(
+        pl.col("time_modified").dt.to_string(DHIS2_DATE_FORMAT)
+    )
 
     # join exist event UID if they already exist
     grades = grades.join(
-        other=events.select(["trackedEntity", "orgUnit", "course_id", "course_stage", "event"]),
+        other=events.select(
+            ["trackedEntity", "orgUnit", "course_id", "course_stage", "event"]
+        ),
         on=["trackedEntity", "orgUnit", "course_id", "course_stage"],
         how="left",
     )
@@ -384,14 +437,20 @@ def transform_grades(
     return grades
 
 
-def build_grade_events_payload(dhis2: DHIS2, grades: pl.DataFrame, events: pl.DataFrame) -> List[dict]:
+def build_grade_events_payload(
+    dhis2: DHIS2, grades: pl.DataFrame, events: pl.DataFrame
+) -> List[dict]:
     """Build JSON payload for events (LifeNet Digital Learning program)."""
     payload = []
     uids = generate_uid(dhis2, n=len(grades))
 
     # make sure data types are correct in events data
     events = events.with_columns(
-        [pl.col("module").cast(int), pl.col("score").cast(float), pl.col("course_id").cast(int)]
+        [
+            pl.col("module").cast(int),
+            pl.col("score").cast(float),
+            pl.col("course_id").cast(int),
+        ]
     )
 
     for grade in grades.iter_rows(named=True):
@@ -458,25 +517,34 @@ def transform_enrollments(
         pl.struct(["user_id", "course_id"])
         .map_elements(
             lambda x: not certificates.filter(
-                (pl.col("user_id") == x["user_id"]) & (pl.col("course_id") == x["course_id"])
+                (pl.col("user_id") == x["user_id"])
+                & (pl.col("course_id") == x["course_id"])
             ).is_empty()
         )
         .alias("certificate_issued")
     )
 
     # convert datetime to string as expected by DHIS2
-    enrollments = enrollments.with_columns(pl.col("enrollment_date").dt.to_string(DHIS2_DATE_FORMAT))
+    enrollments = enrollments.with_columns(
+        pl.col("enrollment_date").dt.to_string(DHIS2_DATE_FORMAT)
+    )
 
     # get maximum completion state for a given user & course
     completions = (
-        completions.group_by(by=["user_id", "course_id"]).max().select(["user_id", "course_id", "completion_state"])
+        completions.group_by(["user_id", "course_id"])
+        .max()
+        .select(["user_id", "course_id", "completion_state"])
     )
-    enrollments = enrollments.join(other=completions, on=["user_id", "course_id"], how="left")
+    enrollments = enrollments.join(
+        other=completions, on=["user_id", "course_id"], how="left"
+    )
 
     # ignore course enrollments without any associated trackedEntity
     enrollments = enrollments.filter(pl.col("trackedEntity").is_not_null())
 
-    enrollments = enrollments.rename({"category_id": "module", "completion_state": "completion_status"})
+    enrollments = enrollments.rename(
+        {"category_id": "module", "completion_state": "completion_status"}
+    )
 
     # join existing event uid if they already exist
     enrollments = enrollments.join(
@@ -492,13 +560,17 @@ def transform_enrollments(
     return enrollments
 
 
-def build_enrollment_events_payload(dhis2: DHIS2, enrollments: pl.DataFrame, events: pl.DataFrame) -> List[dict]:
+def build_enrollment_events_payload(
+    dhis2: DHIS2, enrollments: pl.DataFrame, events: pl.DataFrame
+) -> List[dict]:
     """Build JSON payload for events (LifeNet Digital Learning program)."""
     payload = []
     uids = generate_uid(dhis2, n=len(enrollments))
 
     # make sure data types are correct in events data
-    enrollments = enrollments.with_columns([pl.col("course_id").cast(int), pl.col("user_id").cast(int)])
+    enrollments = enrollments.with_columns(
+        [pl.col("course_id").cast(int), pl.col("user_id").cast(int)]
+    )
 
     for enrol in enrollments.iter_rows(named=True):
         if enrol.get("event"):
@@ -551,26 +623,46 @@ def add_missing_options(dhis2: DHIS2, courses: pl.DataFrame):
     OPTION_SET_UID = "uNtNb2JcvWM"
 
     # get existing options
-    pages = [p for p in dhis2.api.get_paged("options", params={"fields": "id,name,code,optionSet"})]
+    pages = [
+        p
+        for p in dhis2.api.get_paged(
+            "options", params={"fields": "id,name,code,optionSet"}
+        )
+    ]
     r = dhis2.api.merge_pages(pages)
     options = pl.DataFrame(r["options"])
-    options = options.with_columns(pl.col("optionSet").struct.field("id").alias("optionSet"))
+    options = options.with_columns(
+        pl.col("optionSet").struct.field("id").alias("optionSet")
+    )
     course_options = options.filter(pl.col("optionSet") == OPTION_SET_UID)
 
     # identify missing options
-    missing = courses.filter(pl.col("course_id").is_in(course_options["code"].cast(int)).not_())
+    missing = courses.filter(
+        pl.col("course_id").is_in(course_options["code"].cast(int)).not_()
+    )
 
     # add missing course options
     for course in missing.iter_rows(named=True):
-        current_run.log_info(f"Adding missing course option \"{course['course_name']}\" to DHIS2")
+        current_run.log_info(
+            f'Adding missing course option "{course["course_name"]}" to DHIS2'
+        )
 
         r = dhis2.api.get("system/id")
-        uid = r.json()["codes"][0]
+        uid = r["codes"][0]
 
-        payload = {"id": uid, "name": course["course_name"], "code": course["course_id"]}
+        payload = {
+            "id": uid,
+            "name": course["course_name"],
+            "code": course["course_id"],
+        }
 
-        r = dhis2.api.post("options", json=payload, params={"importStrategy": "CREATE_OR_UPDATE"})
-        r = dhis2.api.post(f"optionSets/{OPTION_SET_UID}/options/{uid}", params={"importStrategy": "CREATE_OR_UPDATE"})
+        r = dhis2.api.post(
+            "options", json=payload, params={"importStrategy": "CREATE_OR_UPDATE"}
+        )
+        r = dhis2.api.post(
+            f"optionSets/{OPTION_SET_UID}/options/{uid}",
+            params={"importStrategy": "CREATE_OR_UPDATE"},
+        )
 
     # course module option set
     OPTION_SET_UID = "rzmshuuPjEV"
@@ -578,24 +670,47 @@ def add_missing_options(dhis2: DHIS2, courses: pl.DataFrame):
     modules = courses.select(["category_id", "category_name"]).unique()
     modules = modules.filter(pl.col("category_id") != 54)  # "Moodle App Test Courses"
     module_options = options.filter(pl.col("optionSet") == OPTION_SET_UID)
-    missing = modules.filter(pl.col("category_id").is_in(module_options["code"].cast(int)).not_())
+    missing = modules.filter(
+        pl.col("category_id").is_in(module_options["code"].cast(int)).not_()
+    )
 
     # add missing course module options
     for module in missing.iter_rows(named=True):
-        current_run.log_info(f"Adding missing course module option \"{module['category_name']}\" to DHIS2")
+        current_run.log_info(
+            f'Adding missing course module option "{module["category_name"]}" to DHIS2'
+        )
 
         r = dhis2.api.get("system/id")
-        uid = r.json()["codes"][0]
+        uid = r["codes"][0]
 
-        payload = {"id": uid, "name": module["category_name"], "code": module["category_id"]}
+        payload = {
+            "id": uid,
+            "name": module["category_name"],
+            "code": module["category_id"],
+        }
 
-        r = dhis2.api.post("options", json=payload, params={"importStrategy": "CREATE_OR_UPDATE"})
-        r = dhis2.api.post(f"optionSets/{OPTION_SET_UID}/options/{uid}", params={"importStrategy": "CREATE_OR_UPDATE"})
+        r = dhis2.api.post(
+            "options", json=payload, params={"importStrategy": "CREATE_OR_UPDATE"}
+        )
+        r = dhis2.api.post(
+            f"optionSets/{OPTION_SET_UID}/options/{uid}",
+            params={"importStrategy": "CREATE_OR_UPDATE"},
+        )
 
 
-def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, validation_mode: str) -> bool:
+def post(
+    dhis2: DHIS2,
+    payload: dict,
+    import_mode: str,
+    import_strategy: str,
+    validation_mode: str,
+) -> bool:
     """Push tracked entities, program enrollments or events to DHIS2."""
-    params = {"importMode": import_mode, "importStrategy": import_strategy, "validationMode": validation_mode}
+    params = {
+        "importMode": import_mode,
+        "importStrategy": import_strategy,
+        "validationMode": validation_mode,
+    }
     # check if payload is empty before starting import job
     empty = True
     for payload_type in ["events", "trackedEntities", "enrollments"]:
@@ -612,14 +727,18 @@ def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, va
         params=params,
     )
     job_uid = r.json()["response"]["id"]
-    current_run.log_info(f"Started tracker import job {job_uid}. Waiting for completion...")
-    current_run.log_info(f"Import job progress available at {dhis2.api.url}/tracker/jobs/{job_uid}")
+    current_run.log_info(
+        f"Started tracker import job {job_uid}. Waiting for completion..."
+    )
+    current_run.log_info(
+        f"Import job progress available at {dhis2.api.url}/tracker/jobs/{job_uid}"
+    )
 
     # request job status and wait for completion
     completed = False
     while not completed:
         r = dhis2.api.get(f"tracker/jobs/{job_uid}")
-        progress = r.json()
+        progress = r
         for task in progress:
             if task.get("completed"):
                 completed = True
@@ -627,7 +746,7 @@ def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, va
 
     # check job failure/success
     r = dhis2.api.get(f"tracker/jobs/{job_uid}/report")
-    report = r.json()
+    report = r
     if report["status"] == "OK":
         created = report["stats"]["created"]
         updated = report["stats"]["updated"]
@@ -636,7 +755,9 @@ def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, va
         current_run.log_info(
             f"Import job {job_uid} completed (created: {created}, updated: {updated}, deleted: {deleted}, ignored: {ignored})"
         )
-        current_run.log_info(f"Full report available at {dhis2.api.url}/tracker/jobs/{job_uid}/report")
+        current_run.log_info(
+            f"Full report available at {dhis2.api.url}/tracker/jobs/{job_uid}/report"
+        )
     else:
         current_run.log_error(
             f"Import job {job_uid} failed. Full report available at {dhis2.api.url}/tracker/jobs/{job_uid}/report"
@@ -649,7 +770,13 @@ def post(dhis2: DHIS2, payload: dict, import_mode: str, import_strategy: str, va
 
 
 @moodle_to_dhis2.task
-def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir: Path, output_dir: Path):
+def sync(
+    import_mode: str,
+    import_strategy: str,
+    validation_mode: str,
+    input_dir: Path,
+    output_dir: Path,
+):
     dhis2 = DHIS2(workspace.dhis2_connection("lifenet"))
 
     # add missing course and module options to DHIS2 if needed
@@ -701,7 +828,9 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
     # load and transform moodle grades data
     grades = pl.read_parquet(input_dir / "grades.parquet")
     courses = pl.read_parquet(input_dir / "courses.parquet")
-    events = get_events(dhis2, LEARNING_PROGRAM_UID, LEARNING_DATA_VALUES, include_deleted=False)
+    events = get_events(
+        dhis2, LEARNING_PROGRAM_UID, LEARNING_DATA_VALUES, include_deleted=False
+    )
     events = events.with_columns(
         [
             # pl.col("completion_status").cast(int),
@@ -731,7 +860,9 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
     certificates = pl.read_parquet(input_dir / "certificates.parquet")
     courses = pl.read_parquet(input_dir / "courses.parquet")
     completions = pl.read_parquet(input_dir / "completions.parquet")
-    events = get_events(dhis2, ENROLLMENTS_PROGRAM_UID, ENROLLMENTS_DATA_VALUES, include_deleted=False)
+    events = get_events(
+        dhis2, ENROLLMENTS_PROGRAM_UID, ENROLLMENTS_DATA_VALUES, include_deleted=False
+    )
 
     if "completion_status" not in events.columns:
         events = events.with_columns(pl.lit(None).alias("completion_status"))
@@ -745,7 +876,9 @@ def sync(import_mode: str, import_strategy: str, validation_mode: str, input_dir
             pl.col("completion_status").cast(int),
         ]
     )
-    enrollments = transform_enrollments(enrollments, users, certificates, courses, completions, events)
+    enrollments = transform_enrollments(
+        enrollments, users, certificates, courses, completions, events
+    )
     enrollments.write_parquet(output_dir / "enrollments.parquet")
 
     # push moodle course enrollments events

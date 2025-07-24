@@ -42,7 +42,11 @@ POSITION_OPTION_SET = {
     "HUMC": "HUMC",
 }
 
-GENDER_OPTION_SET = {"Female": "FEMALE", "Male": "MALE", "Unknown": "UNKNOWN"}  # default: "UNKNOWN"
+GENDER_OPTION_SET = {
+    "Female": "FEMALE",
+    "Male": "MALE",
+    "Unknown": "UNKNOWN",
+}  # default: "UNKNOWN"
 
 PROGRAM_PHASE_OPTION_SET = {"Active": "ACTIVE", "Alumni": "ALUMNI"}
 
@@ -82,7 +86,7 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
         },
     )
 
-    for entity in r.json()["instances"]:
+    for entity in r["instances"]:
         for attr in entity["attributes"]:
             entity[mapping[attr["attribute"]]] = attr["value"]
         entities.append(entity)
@@ -125,18 +129,25 @@ def get_enrollments(dhis2: DHIS2, program_uid: str) -> pl.DataFrame:
         params={"ouMode": "ALL", "program": program_uid, "skipPaging": True},
     )
 
-    for enrol in r.json()["instances"]:
+    for enrol in r["instances"]:
         enrollments.append(enrol)
 
     df = pl.DataFrame(enrollments)
     return df
 
 
-def get_events(dhis2: DHIS2, program_uid: str, data_values: dict, include_deleted: bool = False) -> pl.DataFrame:
+def get_events(
+    dhis2: DHIS2, program_uid: str, data_values: dict, include_deleted: bool = False
+) -> pl.DataFrame:
     """Get existing enrollments for a given Tracker program."""
     events = []
 
-    params = {"ouMode": "ALL", "program": program_uid, "skipPaging": True, "includeDeleted": include_deleted}
+    params = {
+        "ouMode": "ALL",
+        "program": program_uid,
+        "skipPaging": True,
+        "includeDeleted": include_deleted,
+    }
 
     r = dhis2.api.get(
         "tracker/events",
@@ -144,7 +155,7 @@ def get_events(dhis2: DHIS2, program_uid: str, data_values: dict, include_delete
     )
 
     mapping = {v: k for k, v in data_values.items()}
-    for event in r.json()["instances"]:
+    for event in r["instances"]:
         if "dataValues" in event:
             for data_value in event["dataValues"]:
                 event[mapping[data_value["dataElement"]]] = data_value["value"]
@@ -176,13 +187,13 @@ def get_events(dhis2: DHIS2, program_uid: str, data_values: dict, include_delete
 def get_program_org_units(dhis2: DHIS2, program_uid: str) -> List[str]:
     """Get org units for a given DHIS2 Tracker program."""
     r = dhis2.api.get(f"programs/{program_uid}")
-    org_units = [ou["id"] for ou in r.json()["organisationUnits"]]
+    org_units = [ou["id"] for ou in r["organisationUnits"]]
     return org_units
 
 
 def generate_uid(dhis2: DHIS2, n: int = 1) -> List[str]:
     """Generate valid UID using DHIS2 API."""
-    return dhis2.api.get("system/id", params={"limit": n}).json()["codes"]
+    return dhis2.api.get("system/id", params={"limit": n})["codes"]
 
 
 def join_tracked_entities_uid(
@@ -197,7 +208,9 @@ def join_tracked_entities_uid(
     for ou in users["org_unit"].unique():
         if ou:
             if ou not in org_units:
-                current_run.log_warning(f"Org unit '{ou}' from Moodle not found in Tracker program")
+                current_run.log_warning(
+                    f"Org unit '{ou}' from Moodle not found in Tracker program"
+                )
 
     users = users.filter(pl.col("org_unit").is_in(org_units))
 
@@ -229,7 +242,9 @@ def prepare_tracked_entities_payload(
 
         for column, value in entity.items():
             if column in tracked_entity_attributes and value is not None:
-                attributes.append({"attribute": tracked_entity_attributes[column], "value": value})
+                attributes.append(
+                    {"attribute": tracked_entity_attributes[column], "value": value}
+                )
 
         if entity.get("trackedEntity"):
             tracked_entity_uid = entity["trackedEntity"]
@@ -249,7 +264,10 @@ def prepare_tracked_entities_payload(
 
 
 def prepare_enrollments_payload(
-    existing_enrollments: pl.DataFrame, users: pl.DataFrame, program_uid: str, dhis2: DHIS2
+    existing_enrollments: pl.DataFrame,
+    users: pl.DataFrame,
+    program_uid: str,
+    dhis2: DHIS2,
 ) -> List[dict]:
     """Prepare JSON payload DHIS2 Tracker enrollments."""
     enrollments = []
@@ -259,9 +277,13 @@ def prepare_enrollments_payload(
         if not user.get("trackedEntity") or not user.get("org_unit"):
             continue
 
-        if "trackedEntity" in existing_enrollments.columns and "orgUnit" in existing_enrollments.columns:
+        if (
+            "trackedEntity" in existing_enrollments.columns
+            and "orgUnit" in existing_enrollments.columns
+        ):
             df_ = existing_enrollments.filter(
-                (pl.col("trackedEntity") == user["trackedEntity"]) & (pl.col("orgUnit") == user["org_unit"])
+                (pl.col("trackedEntity") == user["trackedEntity"])
+                & (pl.col("orgUnit") == user["org_unit"])
             )
             if df_.is_empty():
                 enrollment_uid = uids.pop()
@@ -297,7 +319,9 @@ def prepare_grade_events_payload(
     uids = generate_uid(dhis2, n=len(grades))
 
     # join existing events uid
-    events = get_events(dhis2=dhis2, program_uid=LEARNING_PROGRAM_UID, data_values=LEARNING_DATA_VALUES)
+    events = get_events(
+        dhis2=dhis2, program_uid=LEARNING_PROGRAM_UID, data_values=LEARNING_DATA_VALUES
+    )
     events = events.with_columns(
         [
             pl.col("completion_status").cast(int),
@@ -380,11 +404,23 @@ def prepare_course_enrollments_events_payload(
     )
 
     # join existing events uid
-    events = get_events(dhis2=dhis2, program_uid=ENROLLMENTS_PROGRAM_UID, data_values=ENROLLMENTS_DATA_VALUES)
-    if "user_id" in events.columns and "course_id" in events.columns and "course_stage" in events.columns:
-        events = events.with_columns([pl.col("user_id").cast(int), pl.col("course_id").cast(int)])
+    events = get_events(
+        dhis2=dhis2,
+        program_uid=ENROLLMENTS_PROGRAM_UID,
+        data_values=ENROLLMENTS_DATA_VALUES,
+    )
+    if (
+        "user_id" in events.columns
+        and "course_id" in events.columns
+        and "course_stage" in events.columns
+    ):
+        events = events.with_columns(
+            [pl.col("user_id").cast(int), pl.col("course_id").cast(int)]
+        )
         enrollments = enrollments.join(
-            other=events.select(["event", "trackedEntity", "course_id", "course_stage"]),
+            other=events.select(
+                ["event", "trackedEntity", "course_id", "course_stage"]
+            ),
             on=["trackedEntity", "course_id", "course_stage"],
             how="left",
         )
@@ -394,7 +430,8 @@ def prepare_course_enrollments_events_payload(
         pl.struct(["user_id", "course_id"])
         .map_elements(
             lambda x: not certificates.filter(
-                (pl.col("user_id") == x["user_id"]) & (pl.col("course_id") == x["course_id"])
+                (pl.col("user_id") == x["user_id"])
+                & (pl.col("course_id") == x["course_id"])
             ).is_empty()
         )
         .alias("certificate_issued")
@@ -445,7 +482,11 @@ def post(dhis2: DHIS2, payload: dict) -> dict:
     r = dhis2.api.post(
         endpoint="tracker",
         json=payload,
-        params={"importMode": "COMMIT", "importStrategy": "CREATE_AND_UPDATE", "validationMode": "FAIL_FAST"},
+        params={
+            "importMode": "COMMIT",
+            "importStrategy": "CREATE_AND_UPDATE",
+            "validationMode": "FAIL_FAST",
+        },
     )
 
     r.raise_for_status()
@@ -458,7 +499,7 @@ def post(dhis2: DHIS2, payload: dict) -> dict:
     i = 0
     while not completed:
         r = dhis2.api.get(endpoint=f"tracker/jobs/{job}")
-        for step in r.json():
+        for step in r:
             if step["message"] not in messages:
                 messages.append(step["message"])
                 current_run.log_info(step["message"])
@@ -478,10 +519,15 @@ def post(dhis2: DHIS2, payload: dict) -> dict:
     # collect import report when job is done
     r = dhis2.api.get(endpoint=f"tracker/jobs/{job}/report")
 
-    return r.json()
+    return r
 
 
-def push_to_tracker(dhis2: DHIS2, tracked_entities: dict = None, enrollments: dict = None, events: dict = None) -> str:
+def push_to_tracker(
+    dhis2: DHIS2,
+    tracked_entities: dict = None,
+    enrollments: dict = None,
+    events: dict = None,
+) -> str:
     """Push tracked entities, program enrollments or events to DHIS2."""
     if not tracked_entities and not enrollments and not events:
         current_run.log_error("No payload provided")
@@ -513,13 +559,15 @@ def push_to_tracker(dhis2: DHIS2, tracked_entities: dict = None, enrollments: di
     # regularly fetch import job status
 
     completed = False
-    current_run.log_info(f"Waiting for completion of DHIS2 Tracker import job {job_uid}")
+    current_run.log_info(
+        f"Waiting for completion of DHIS2 Tracker import job {job_uid}"
+    )
     messages = []
 
     i = 0
     while not completed:
         r = dhis2.api.get(endpoint=f"tracker/jobs/{job_uid}")
-        for step in r.json():
+        for step in r:
             if step["message"] not in messages:
                 messages.append(step["message"])
                 current_run.log_info(step["message"])
@@ -538,4 +586,4 @@ def push_to_tracker(dhis2: DHIS2, tracked_entities: dict = None, enrollments: di
     # collect import report when job is done
 
     r = dhis2.api.get(endpoint=f"tracker/jobs/{job_uid}/report")
-    return r.json()
+    return r
