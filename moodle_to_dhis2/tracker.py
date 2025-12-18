@@ -86,7 +86,7 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
         },
     )
 
-    for entity in r["instances"]:
+    for entity in r["trackedEntities"]:
         for attr in entity["attributes"]:
             entity[mapping[attr["attribute"]]] = attr["value"]
         entities.append(entity)
@@ -129,7 +129,7 @@ def get_enrollments(dhis2: DHIS2, program_uid: str) -> pl.DataFrame:
         params={"ouMode": "ALL", "program": program_uid, "skipPaging": True},
     )
 
-    for enrol in r["instances"]:
+    for enrol in r["enrollments"]:
         enrollments.append(enrol)
 
     df = pl.DataFrame(enrollments)
@@ -155,7 +155,7 @@ def get_events(
     )
 
     mapping = {v: k for k, v in data_values.items()}
-    for event in r["instances"]:
+    for event in r["events"]:
         if "dataValues" in event:
             for data_value in event["dataValues"]:
                 event[mapping[data_value["dataElement"]]] = data_value["value"]
