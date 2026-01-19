@@ -131,70 +131,7 @@ def get_dhis_period(year, mode):
     month_list = dhis_month_period_range(year, period_start_month, period_end_month)
 
     return month_list
-                         periods: List[str],
-                         org_units: List[str], conn_identifier:str, start_date:str) -> Optional[Dict]:
-    """
-    Fetch data using dataValueSets API with proper data element group handling.
-    Adapted for DHIS2 version 2.39 API.
-    """
-    try:
-        dhis2_conn = workspace.dhis2_connection(conn_identifier)
-        current_run.log_info(f"Connected to {dhis2_conn.url}")
-        
-        params = {
-            "paging": "false", 
-            "includeDeleted": "false"
-        }
 
-        # Handle date range parameters for 2.39 API
-        if start_date != "2010-01-01":
-            end_date = date.today()
-            formatted_end_date = end_date.strftime("%Y-%m-%d")
-            params["startDate"] = start_date
-            params["endDate"] = formatted_end_date
-
-        # Add periods, org units, and data elements as comma-separated values
-        # DHIS2 2.39 API expects these as single parameters with comma-separated values
-        if periods:
-            params["period"] = periods  # DHIS2 2.39 uses semicolon for multiple periods
-        if org_units:
-            params["orgUnit"] = org_units  # DHIS2 2.39 uses semicolon for multiple org units
-        if data_element_ids:
-            params["dataElement"] = data_element_ids  # DHIS2 2.39 uses semicolon for multiple data elements
-
-        current_run.log_info(f"Reading data from {dhis2_conn.url}")
-        current_run.log_info(f"API Parameters: {params}")
-        query_string = urlencode(params, doseq=True)
-        current_run.log_info(f"Param string: {query_string}")
-        current_run.log_info(f"URL : {dhis2_conn.url}/api/dataValueSets?{query_string}")
-        try:
-            response = requests.get(
-                f"{dhis2_conn.url}/api/dataValueSets?{query_string}",
-                params={"query": query_string},
-                auth=HTTPBasicAuth(dhis2_conn.username, dhis2_conn.password),
-                timeout=400
-            )
-
-            if response.status_code == 200:
-                try:
-                    return response.json()
-                except ValueError:
-                    print("Invalid JSON response. Content:")
-                    print(response.text[:500])
-                return None
-    
-            print(f"Error {response.status_code}: {response.text[:200]}")
-            if response.status_code in [401, 403]:
-                return None
-
-        except requests.exceptions.RequestException as e:
-            print(f"Request failed: {e}")
-            return None
-        
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {str(e)}")
-        
-    return None
 
 def fetch_data_value_sets(data_element_ids: List[str],
                          periods: List[str],
@@ -236,11 +173,10 @@ def fetch_data_value_sets(data_element_ids: List[str],
         try:
             response = requests.get(
                 f"{dhis2_conn.url}/api/dataValueSets",
-                params=params,
+                params=params_list,
                 auth=HTTPBasicAuth(dhis2_conn.username, dhis2_conn.password),
                 timeout=400
             )
-
             if response.status_code == 200:
                 try:
                     return response.json()
