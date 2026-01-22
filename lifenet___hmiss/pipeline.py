@@ -32,7 +32,6 @@ def lifenet___hmiss(start_date : str, countries : str):
         k_data_element_groups = ['ofBSokyPXNn','SMqDYR0nUcg','Qh1W8QRaFUZ','E40Npg5eHsE','n0fE9qoi5N1','qADpr4dQZuC','JMNedIzqWGA','Tco6NWSjw53','XUyBl4L2raq','VWCIP8wQvMc','dTUuUMw64bk','SWuN3c3i8fL','wqLiG4JdCcO','VbAGjhNkaOw','XIhYn40pCwk','DCnQwGyolzD','gT7SBAw0EMU','ZEly6FddL4n','ig1GVX7tNmh']
         # Get Kenya Data
         get_data(k_data_element_ids,k_data_element_groups,k_org_unit_ids,k_conn_identifier,start_date)
-        current_run.log_info("== No Kenya")
 
     if "UGANDA" in countries:
         #Uganda parameters
@@ -53,7 +52,6 @@ def lifenet___hmiss(start_date : str, countries : str):
         g_data_element_groups = ['bKnH5cjibju','qvJ4lfY39B8','AIR3PevnkX1','iNKQ94YFAi2','CrbRhxAjC7I','BKV7si1tSyb','Y5bBv4wOO54','zuwpJUFpWPq','bKnH5cjibju','l7x4Th8Yyjk','ao8xuAkvB43','e6vgHQeJ3T1','wFAWlGYTcX4','YGpjoeCmLnW','oI1dhPjSGiu','kWEUURm4mdL','bKnH5cjibju','BvSZct8R9nK','AfN57jhF423','RzLaF1jmWeZ']
         # Get Ghana Data
         get_data(g_data_element_ids,g_data_element_groups,g_org_unit_ids,g_conn_identifier,start_date)
-        current_run.log_info("== No Ghana")
 
     if "MALAWI" in countries:
         #Malawi parameters
@@ -64,7 +62,6 @@ def lifenet___hmiss(start_date : str, countries : str):
         m_data_element_groups = ['FXA7FbbKvZ1','A5xW5sIeoRV','l2cbutKQU9K','FnOzKaLnGy1','TJ7XX2vEtyd','SLDYafSzSrj','xiMFKdTWRFp','tsefi6doleb','AnGLAlOrzpN','vJxPpUXNNci','sl3HwATctcg','eeWCk7FjSKE','HRWNG10u4OR','FrXg1nHZxL2','kkHokihKMp2','t2MyS9B4IoV','mQ9GjwjE9wM','IGEQm1wP1dJ','RHgqynGGPy1']
         # Get Malawi Data
         get_data(m_data_element_ids,m_data_element_groups,m_org_unit_ids,m_conn_identifier,start_date)
-        current_run.log_info("== No Malawi")
 
     if "DRC" in countries:
         #DRC parameters
@@ -75,7 +72,6 @@ def lifenet___hmiss(start_date : str, countries : str):
         d_data_element_groups = ['IMHGy8MX3wG','PRlhYClbAs7','alU5ulLcmLJ','aBM1ANXpbpC','RtDEQS6sbcq','xFUJ5K2JF4r','fzXSfcghR9h','rlmzmjiUR3W','pf2NTDFHym1','QSElAHIYbOU','qIMdBFn5Uvd','LgPxtZ1JSjH','pRGFD7tsGz2','LgPxtZ1JSjH','e2G7cfoNZ4G','qCFRiss9p9v','lxb21pmYdqw','xJCY73ee2vN','tDKaxgERUAR','WytfXnKt73I','wmzXaVyWASM','B2l6jh9FYgh','fZx86mbqEv3','VXjXo78YHz4','E3nAmNYoFzM','aPYWzIrR4Rh','zoYXWaxdkCi','GewECwrQK4t','LTuiwzK2XYO','o0C4iIwXeJc','xFF02gBEhPR','EUEZWxAmccl','d3R2MH1m0RI','JG9Vqun6FzO','fkVmBwwOIeo','PAk8ACdsgp3']
         # Get DRC Data
         get_data(d_data_element_ids,d_data_element_groups,d_org_unit_ids,d_conn_identifier,start_date)
-        current_run.log_info("== No DRC")
 
     if "BURUNDI" in countries:
         #Burundi parameters
@@ -86,7 +82,6 @@ def lifenet___hmiss(start_date : str, countries : str):
         b_data_element_groups = ['T2otVGuPPiy','m6VDlcFYkmB','qJ95rsHLkNR','noTVip92XJK','fEAVh96L4tJ','dQuMuDJ4I9o','W36Q1h1nuwL','E1bS0BRZ0BM','rXFvMPFixcl','pg5SCl0yv4u','T6aE0zOJAz7','hfdVbT0H1bN','noTVip92XJK','qJ95rsHLkNR','CezsVo5bOob','BBuw8Y7a3we','XXAYWu3oDor','lFgiDcd0Qeg','uP8MaBi1VqV','GBtT9nQgAfl','yAPRoYH2ASm','WH6NPSr1GXL','kFpto9sIRhN']
         # Get Burundi Data
         get_data(b_data_element_ids,b_data_element_groups,b_org_unit_ids,b_conn_identifier,start_date)
-        current_run.log_info("== No Burundi")
 
 def get_organisation_units(ou_group_id:str, conn_identifier:str):
 
