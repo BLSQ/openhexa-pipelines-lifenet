@@ -126,7 +126,7 @@ def get_enrollments(dhis2: DHIS2, program_uid: str) -> pl.DataFrame:
 
     r = dhis2.api.get(
         "tracker/enrollments",
-        params={"ouMode": "ALL", "program": program_uid, "skipPaging": True},
+        params={"ouMode": "ALL", "program": program_uid, "paging": False},
     )
 
     for enrol in r["enrollments"]:
@@ -145,7 +145,7 @@ def get_events(
     params = {
         "ouMode": "ALL",
         "program": program_uid,
-        "skipPaging": True,
+        "paging": False,
         "includeDeleted": include_deleted,
     }
 
