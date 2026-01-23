@@ -163,6 +163,10 @@ def transform_users(
     # join existing trackedEntity id if user_id already exists in Tracker
     if not tracked_entities.is_empty():
         tracked_entities = tracked_entities.unique(subset="user_id", keep="last")
+        users = users.with_columns(pl.col("user_id").cast(pl.Int64))
+        tracked_entities = tracked_entities.with_columns(
+            pl.col("user_id").cast(pl.Int64)
+        )
         users = users.join(
             other=tracked_entities.select(["user_id", "trackedEntity"]),
             on="user_id",
