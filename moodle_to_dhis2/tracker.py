@@ -88,7 +88,9 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
 
     for entity in r["trackedEntities"]:
         for attr in entity["attributes"]:
-            entity[mapping[attr["attribute"]]] = attr["value"]
+            key = mapping.get(attr["attribute"])
+            if key is not None:
+                entity[key] = attr["value"]
         entities.append(entity)
 
     COLUMNS = [
@@ -158,7 +160,9 @@ def get_events(
     for event in r["events"]:
         if "dataValues" in event:
             for data_value in event["dataValues"]:
-                event[mapping[data_value["dataElement"]]] = data_value["value"]
+                key = mapping.get(data_value["dataElement"])
+                if key is not None:
+                    event[key] = data_value["value"]
         events.append(event)
 
     COLUMNS = [
@@ -429,10 +433,12 @@ def prepare_course_enrollments_events_payload(
     enrollments = enrollments.with_columns(
         pl.struct(["user_id", "course_id"])
         .map_elements(
-            lambda x: not certificates.filter(
-                (pl.col("user_id") == x["user_id"])
-                & (pl.col("course_id") == x["course_id"])
-            ).is_empty()
+            lambda x: (
+                not certificates.filter(
+                    (pl.col("user_id") == x["user_id"])
+                    & (pl.col("course_id") == x["course_id"])
+                ).is_empty()
+            )
         )
         .alias("certificate_issued")
     )
