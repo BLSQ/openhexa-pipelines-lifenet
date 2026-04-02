@@ -835,8 +835,8 @@ def sync(
     events = get_events(
         dhis2, LEARNING_PROGRAM_UID, LEARNING_DATA_VALUES, include_deleted=False
     )
-    # Ensure expected columns exist (will be null if no events in DHIS2 yet)
-    for col in ["course_id", "module", "score"]:
+    # Ensure all expected data element columns exist (will be null if no events in DHIS2 yet)
+    for col in LEARNING_DATA_VALUES.keys():
         if col not in events.columns:
             events = events.with_columns(pl.lit(None).alias(col))
 
@@ -873,8 +873,8 @@ def sync(
         dhis2, ENROLLMENTS_PROGRAM_UID, ENROLLMENTS_DATA_VALUES, include_deleted=False
     )
 
-    # Ensure expected columns exist (will be null if no events in DHIS2 yet)
-    for col in ["user_id", "course_id", "module", "certificate_issued", "completion_status"]:
+    # Ensure all expected data element columns exist (will be null if no events in DHIS2 yet)
+    for col in ENROLLMENTS_DATA_VALUES.keys():
         if col not in events.columns:
             events = events.with_columns(pl.lit(None).alias(col))
 
