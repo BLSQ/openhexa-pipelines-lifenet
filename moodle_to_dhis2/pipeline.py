@@ -552,6 +552,14 @@ def transform_enrollments(
         {"category_id": "module", "completion_state": "completion_status"}
     )
 
+    # map boolean completion_status to DHIS2 option codes
+    enrollments = enrollments.with_columns(
+        pl.when(pl.col("completion_status"))
+        .then(pl.lit("1"))
+        .otherwise(pl.lit("0"))
+        .alias("completion_status")
+    )
+
     # join existing event uid if they already exist
     enrollments = enrollments.join(
         other=events.select(["orgUnit", "course_id", "user_id", "event"]),
@@ -883,7 +891,7 @@ def sync(
     # Ensure all expected data element columns exist with correct types
     for col in ENROLLMENTS_DATA_VALUES.keys():
         if col not in events.columns:
-            if col in ["user_id", "course_id", "module", "completion_status"]:
+            if col in ["user_id", "course_id", "module"]:
                 events = events.with_columns(pl.lit(None, dtype=pl.Int64).alias(col))
             else:
                 events = events.with_columns(pl.lit(None, dtype=pl.Utf8).alias(col))
@@ -894,7 +902,6 @@ def sync(
             pl.col("course_id").cast(int),
             pl.col("module").cast(int),
             (pl.col("certificate_issued") == "true").alias("certificate_issued"),
-            pl.col("completion_status").cast(int),
         ]
     )
     enrollments = transform_enrollments(
