@@ -835,10 +835,15 @@ def sync(
     events = get_events(
         dhis2, LEARNING_PROGRAM_UID, LEARNING_DATA_VALUES, include_deleted=False
     )
-    # Ensure all expected data element columns exist (will be null if no events in DHIS2 yet)
+    # Ensure all expected data element columns exist with correct types
     for col in LEARNING_DATA_VALUES.keys():
         if col not in events.columns:
-            events = events.with_columns(pl.lit(None).alias(col))
+            if col in ["course_id", "module", "completion_status"]:
+                events = events.with_columns(pl.lit(None, dtype=pl.Int64).alias(col))
+            elif col == "score":
+                events = events.with_columns(pl.lit(None, dtype=pl.Float64).alias(col))
+            else:
+                events = events.with_columns(pl.lit(None, dtype=pl.Utf8).alias(col))
 
     events = events.with_columns(
         [
@@ -873,10 +878,13 @@ def sync(
         dhis2, ENROLLMENTS_PROGRAM_UID, ENROLLMENTS_DATA_VALUES, include_deleted=False
     )
 
-    # Ensure all expected data element columns exist (will be null if no events in DHIS2 yet)
+    # Ensure all expected data element columns exist with correct types
     for col in ENROLLMENTS_DATA_VALUES.keys():
         if col not in events.columns:
-            events = events.with_columns(pl.lit(None).alias(col))
+            if col in ["user_id", "course_id", "module", "completion_status"]:
+                events = events.with_columns(pl.lit(None, dtype=pl.Int64).alias(col))
+            else:
+                events = events.with_columns(pl.lit(None, dtype=pl.Utf8).alias(col))
 
     events = events.with_columns(
         [
