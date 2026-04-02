@@ -406,6 +406,8 @@ def transform_grades(
         on="trackedEntity",
         how="left",
     )
+    # ignore grade events without enrollment UID
+    grades = grades.filter(pl.col("enrollment").is_not_null())
     if n - len(grades) > 0:
         current_run.log_info(
             f"Skipping {n - len(grades)} grade events not linked to any enrollment"
