@@ -359,6 +359,7 @@ def build_enrollments_payload(
 
 
 def transform_grades(
+    dhis2: DHIS2,
     grades: pl.DataFrame,
     enrollments: pl.DataFrame,
     tracked_entities: pl.DataFrame,
@@ -430,6 +431,19 @@ def transform_grades(
     grades = grades.with_columns(
         pl.col("time_modified").dt.to_string(DHIS2_DATE_FORMAT)
     )
+
+    # ignore grade events with org units not assigned to the program
+    program_org_units = get_program_org_units(dhis2, LEARNING_PROGRAM_UID)
+    invalid_org_units = grades.filter(~pl.col("orgUnit").is_in(program_org_units))
+    if len(invalid_org_units) > 0:
+        missing_uids = invalid_org_units["orgUnit"].unique().to_list()
+        current_run.log_warning(
+            f"Skipping {len(invalid_org_units)} grade events whose org unit is not assigned "
+            f"to the LifeNet Digital Learning program. "
+            f"Org units to add to the program: {', '.join(missing_uids)}"
+        )
+        grades = grades.filter(pl.col("orgUnit").is_in(program_org_units))
+    n = len(grades)
 
     # join exist event UID if they already exist
     grades = grades.join(
@@ -505,6 +519,7 @@ def build_grade_events_payload(
 
 
 def transform_enrollments(
+    dhis2: DHIS2,
     enrollments: pl.DataFrame,
     users: pl.DataFrame,
     certificates: pl.DataFrame,
@@ -559,6 +574,18 @@ def transform_enrollments(
         .otherwise(pl.lit("0"))
         .alias("completion_status")
     )
+
+    # ignore enrollment events with org units not assigned to the program
+    program_org_units = get_program_org_units(dhis2, ENROLLMENTS_PROGRAM_UID)
+    invalid_org_units = enrollments.filter(~pl.col("org_unit").is_in(program_org_units))
+    if len(invalid_org_units) > 0:
+        missing_uids = invalid_org_units["org_unit"].unique().to_list()
+        current_run.log_warning(
+            f"Skipping {len(invalid_org_units)} enrollment events whose org unit is not assigned "
+            f"to the Moodle Course Enrollments program. "
+            f"Org units to add to the program: {', '.join(missing_uids)}"
+        )
+        enrollments = enrollments.filter(pl.col("org_unit").is_in(program_org_units))
 
     # join existing event uid if they already exist
     enrollments = enrollments.join(
@@ -863,7 +890,7 @@ def sync(
             pl.col("score").cast(float),
         ]
     )
-    grades = transform_grades(grades, enrollments, tracked_entities, courses, events)
+    grades = transform_grades(dhis2, grades, enrollments, tracked_entities, courses, events)
     grades.write_parquet(output_dir / "grades.parquet")
 
     # push moodle grades events
@@ -905,7 +932,7 @@ def sync(
         ]
     )
     enrollments = transform_enrollments(
-        enrollments, users, certificates, courses, completions, events
+        dhis2, enrollments, users, certificates, courses, completions, events
     )
     enrollments.write_parquet(output_dir / "enrollments.parquet")
 
