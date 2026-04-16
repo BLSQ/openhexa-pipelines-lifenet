@@ -285,15 +285,18 @@ def build_tracked_entities_payload(
             changed = True
         else:
             for key in ["trackedEntity", "trackedEntityType", "orgUnit"]:
-                if src_entity[key] != dst_entity[key]:
+                if str(src_entity[key]) != str(dst_entity[key]):
                     changed = True
-            for name, dx in TRACKED_ENTITY_ATTRIBUTES.items():
-                src = _get_attribute_value(src_entity["attributes"], dx)
-                dst = _get_attribute_value(dst_entity["attributes"], dx)
-                if src != dst:
-                    changed = True
-                if src is None and dst is None:
-                    changed = False
+                    break
+            if not changed:
+                for name, dx in TRACKED_ENTITY_ATTRIBUTES.items():
+                    src = _get_attribute_value(src_entity["attributes"], dx)
+                    dst = _get_attribute_value(dst_entity["attributes"], dx)
+                    if src is None and dst is None:
+                        continue
+                    if str(src) != str(dst):
+                        changed = True
+                        break
 
         # add entity to payload only if changes are detected
         if changed:
@@ -496,9 +499,10 @@ def build_grade_events_payload(
         # for each data value, compare source and destination
         same = True
         for col in LEARNING_DATA_VALUES:
-            if grade.get(col):
-                if grade.get(col) != dst.get(col):
+            if grade.get(col) is not None:
+                if str(grade.get(col)) != str(dst.get(col)):
                     same = False
+                    break
 
         if not same:
             payload.append(
@@ -636,9 +640,10 @@ def build_enrollment_events_payload(
         # for each data value, compare source and destination
         same = True
         for col in ENROLLMENTS_DATA_VALUES:
-            if enrol.get(col):
-                if enrol.get(col) != dst.get(col):
+            if enrol.get(col) is not None:
+                if str(enrol.get(col)) != str(dst.get(col)):
                     same = False
+                    break
 
         if not same:
             payload.append(
