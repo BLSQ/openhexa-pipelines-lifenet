@@ -448,7 +448,8 @@ def build_grade_events_payload(
 ) -> List[dict]:
     """Build JSON payload for events (LifeNet Digital Learning program)."""
     payload = []
-    uids = generate_uid(dhis2, n=len(grades))
+    n_new = len(grades.filter(pl.col("event").is_null()))
+    uids = generate_uid(dhis2, n=n_new) if n_new > 0 else []
 
     # make sure data types are correct in events data
     events = events.with_columns(
@@ -579,7 +580,8 @@ def build_enrollment_events_payload(
 ) -> List[dict]:
     """Build JSON payload for events (LifeNet Digital Learning program)."""
     payload = []
-    uids = generate_uid(dhis2, n=len(enrollments))
+    n_new = len(enrollments.filter(pl.col("event").is_null()))
+    uids = generate_uid(dhis2, n=n_new) if n_new > 0 else []
 
     # make sure data types are correct in events data
     enrollments = enrollments.with_columns(
