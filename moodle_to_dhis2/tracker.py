@@ -195,9 +195,13 @@ def get_program_org_units(dhis2: DHIS2, program_uid: str) -> List[str]:
     return org_units
 
 
-def generate_uid(dhis2: DHIS2, n: int = 1) -> List[str]:
+def generate_uid(dhis2: DHIS2, n: int = 1, batch_size: int = 10000) -> List[str]:
     """Generate valid UID using DHIS2 API."""
-    return dhis2.api.get("system/id", params={"limit": n})["codes"]
+    uids = []
+    while len(uids) < n:
+        limit = min(batch_size, n - len(uids))
+        uids.extend(dhis2.api.get("system/id", params={"limit": limit})["codes"])
+    return uids
 
 
 def join_tracked_entities_uid(
