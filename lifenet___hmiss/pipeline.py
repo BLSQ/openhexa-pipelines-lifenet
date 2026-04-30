@@ -19,7 +19,8 @@ from urllib.parse import urlencode
 @pipeline(name="Lifenet - HMISs")
 @parameter("start_date", name="Start Date", type=str, default="2010-01-01")
 @parameter("countries", name="Countries", type=str, multiple=True, choices=["BURUNDI", "DRC", "GHANA", "KENYA", "MALAWI", "UGANDA"], default=["BURUNDI", "DRC", "GHANA", "KENYA", "MALAWI", "UGANDA"])
-def lifenet___hmiss(start_date : str, countries : str):
+@parameter("verify", name="Verify SSL Certificates", type=bool, default=True)
+def lifenet___hmiss(start_date : str, countries : str, verify : bool):
     #Lifenet Connection Identifier
     life_identifier = "lifenet"
 
@@ -83,7 +84,7 @@ def lifenet___hmiss(start_date : str, countries : str):
         # Get Burundi Data
         get_data(b_data_element_ids,b_data_element_groups,b_org_unit_ids,b_conn_identifier,start_date)
 
-def get_organisation_units(ou_group_id:str, conn_identifier:str):
+def get_organisation_units(ou_group_id:str, conn_identifier:str, verify:bool):
 
     # Open connection to DHIS2
     dhis2_conn = workspace.dhis2_connection(conn_identifier)
@@ -91,7 +92,7 @@ def get_organisation_units(ou_group_id:str, conn_identifier:str):
     url = f"{dhis2_conn.url}/api/organisationUnitGroups/{ou_group_id}.json?fields=organisationUnits[id]&paging=false"
 
     # make the API call and parse the response 
-    response = requests.get(url, auth=(dhis2_conn.username, dhis2_conn.password))
+    response = requests.get(url, auth=(dhis2_conn.username, dhis2_conn.password), verify=verify)
     json_response = {}
     if response.status_code == 200:
         json_response = json.loads(response.text)
@@ -130,7 +131,10 @@ def get_dhis_period(year, mode):
 
 def fetch_data_value_sets(data_element_ids: List[str],
                          periods: List[str],
-                         org_units: List[str], conn_identifier:str, start_date:str) -> Optional[Dict]:
+                         org_units: List[str], 
+                         conn_identifier:str, 
+                         start_date:str,
+                         verify:bool) -> Optional[Dict]:
     """
     Fetch data using dataValueSets API with proper data element group handling.
     """
@@ -170,7 +174,8 @@ def fetch_data_value_sets(data_element_ids: List[str],
                 f"{dhis2_conn.url}/api/dataValueSets",
                 params=params_list,
                 auth=HTTPBasicAuth(dhis2_conn.username, dhis2_conn.password),
-                timeout=400
+                timeout=400,
+                verify=verify
             )
             if response.status_code == 200:
                 try:
@@ -208,7 +213,9 @@ def get_data(
     data_element_groups:str,
     org_units:str, 
     conn_identifier:str,
-    start_date:str
+    start_date:str,
+    verify:bool
+
 ):
     try:
         # set periods to every previous 4 months
@@ -272,7 +279,8 @@ def get_data(
                 f'{prod_dhis2_conn.url}/api/dataValueSets',
                 auth=(prod_dhis2_conn.username, prod_dhis2_conn.password),
                 headers={'Content-Type': 'application/json'},
-                data=json.dumps(values, allow_nan=True)
+                data=json.dumps(values, allow_nan=True),
+                verify=verify,
             )
 
             current_run.log_info(f"{response.text} - to - {conn_identifier}")
