@@ -8,27 +8,25 @@ SELECT
   from_unixtime (user_.timecreated) AS time_created,
   from_unixtime (user_.lastaccess) AS last_access,
   cohort.idnumber AS org_unit,
+  (CASE
+    WHEN customdata.gender = '1' THEN 'Male'
+    WHEN customdata.gender = '2' THEN 'Female'
+    ElSE NULL
+  END)
+  AS 'gender',
   CAST(
     (
       CASE
-        WHEN gender.data = 'unassigned' THEN NULL
-        ELSE gender.data
-      END
-    ) AS CHAR(100)
-  ) AS gender,
-  CAST(
-    (
-      CASE
-        WHEN position.data = 'unassigned' THEN NULL
-        ELSE position.data
+        WHEN customdata.cadre = 'unassigned' THEN NULL
+        ELSE customdata.cadre
       END
     ) AS CHAR(100)
   ) AS 'position',
   CAST(
     (
       CASE
-        WHEN phase_.data = 'unassigned' THEN NULL
-        ELSE phase_.data
+        WHEN customdata.program_stage = 'unassigned' THEN NULL
+        ELSE customdata.program_stage
       END
     ) AS CHAR(100)
   ) AS 'phase'
@@ -36,12 +34,7 @@ FROM
   mdl_user AS user_
   LEFT JOIN mdl_cohort_members AS members ON user_.id = members.userid
   LEFT JOIN mdl_cohort AS cohort ON members.cohortid = cohort.id
-  LEFT JOIN mdl_user_info_data AS gender ON user_.id = gender.userid
-  AND gender.fieldid = 1
-  LEFT JOIN mdl_user_info_data AS position ON user_.id = position.userid
-  AND position.fieldid = 2
-  LEFT JOIN mdl_user_info_data AS phase_ ON user_.id = phase_.userid
-  AND phase_.fieldid = 3
+  LEFT JOIN mdl_local_otp_customdata AS customdata ON user_.id = customdata.userid
 WHERE
   user_.deleted = 0
 """

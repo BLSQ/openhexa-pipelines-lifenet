@@ -54,7 +54,7 @@ GENDER_OPTION_SET = {
     "Unknown": "UNKNOWN",
 }  # default: "UNKNOWN"
 
-PROGRAM_PHASE_OPTION_SET = {"Active": "ACTIVE", "Alumni": "ALUMNI"}
+PROGRAM_PHASE_OPTION_SET = {"Intensive": "ACTIVE", "Certified": "ALUMNI"}
 
 LEARNING_DATA_VALUES = {
     "completion_status": "ZYRGnmPtQZl",
