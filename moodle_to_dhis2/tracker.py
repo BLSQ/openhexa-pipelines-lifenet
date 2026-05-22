@@ -139,32 +139,116 @@ def get_enrollments(dhis2: DHIS2, program_uid: str) -> pl.DataFrame:
 
 
 def get_events(
-    dhis2: DHIS2, program_uid: str, data_values: dict, include_deleted: bool = False
+    dhis2: DHIS2, 
+    program_uid: str, 
+    data_values: dict, 
+    include_deleted: bool = False,
+    page_size: int = 1000,
+    max_retries: int = 3,
+    retry_delay: int = 2
 ) -> pl.DataFrame:
-    """Get existing enrollments for a given Tracker program."""
+    """Get existing enrollments for a given Tracker program using pagination to prevent timeouts."""
     events = []
-
-    params = {
-        "ouMode": "ALL",
-        "program": program_uid,
-        "paging": False,
-        "includeDeleted": include_deleted,
-    }
-
-    r = dhis2.api.get(
-        "tracker/events",
-        params=params,
-    )
-
+    
     mapping = {v: k for k, v in data_values.items()}
-    for event in r["events"]:
-        if "dataValues" in event:
-            for data_value in event["dataValues"]:
-                key = mapping.get(data_value["dataElement"])
-                if key is not None:
-                    event[key] = data_value["value"]
-        events.append(event)
-
+    
+    def make_request_with_retry(params, retry_count=0):
+        """Make API request with automatic retry on failure."""
+        try:
+            return dhis2.api.get("tracker/events", params=params)
+        except Exception as e:
+            if retry_count < max_retries:
+                wait_time = retry_delay * (retry_count + 1)
+                current_run.log_info(f"Request failed, retrying in {wait_time}s... (Attempt {retry_count + 1}/{max_retries})")
+                sleep(wait_time)
+                return make_request_with_retry(params, retry_count + 1)
+            else:
+                raise e
+    
+    try:
+        # First, get total count to determine number of pages
+        params = {
+            "ouMode": "ALL",
+            "program": program_uid,
+            "includeDeleted": include_deleted,
+            "page": 1,
+            "pageSize": 1,  # Just get one result to check total
+            "totalPages": True,
+        }
+        
+        r = make_request_with_retry(params)
+        total_instances = r.get("totalInstances", 0)
+        total_pages = r.get("totalPages", 1)
+        
+        if total_instances == 0:
+            current_run.log_info(f"No events found for program: {program_uid}")
+            # Return empty DataFrame with expected columns
+            COLUMNS = [
+                "event",
+                "status",
+                "program",
+                "programStage",
+                "enrollment",
+                "trackedEntity",
+                "orgUnit",
+                "orgUnitName",
+                "occurredAt",
+                "createdAt",
+                "updatedAt",
+                "deleted",
+                "attributeOptionCombo",
+                "attributeCategoryOptions",
+            ] + list(mapping.values())
+            
+            return pl.DataFrame({col: [] for col in COLUMNS})
+        
+        current_run.log_info(f"Found {total_instances} total events across {total_pages} pages")
+        
+        # Fetch all pages with pagination
+        for page in range(1, total_pages + 1):
+            params = {
+                "ouMode": "ALL",
+                "program": program_uid,
+                "includeDeleted": include_deleted,
+                "page": page,
+                "pageSize": page_size,
+                "totalPages": True,
+                "order": "createdAt:asc",  # Consistent ordering to avoid duplicates
+            }
+            
+            try:
+                r = make_request_with_retry(params)
+                
+                if "events" in r and r["events"]:
+                    for event in r["events"]:
+                        if "dataValues" in event:
+                            for data_value in event["dataValues"]:
+                                key = mapping.get(data_value["dataElement"])
+                                if key is not None:
+                                    event[key] = data_value["value"]
+                        events.append(event)
+                    
+                    current_run.log_info(f"Fetched page {page}/{total_pages}: {len(r['events'])} events (Total: {len(events)})")
+                
+                # Update total_pages in case it changes between requests
+                if "totalPages" in r and r["totalPages"] != total_pages:
+                    total_pages = r["totalPages"]
+                    current_run.log_info(f"Total pages updated to: {total_pages}")
+                
+                # Small delay between requests to avoid rate limiting
+                if page < total_pages:
+                    sleep(0.1)
+                    
+            except Exception as e:
+                current_run.log_error(f"Failed to fetch page {page} after {max_retries} retries: {str(e)}")
+                raise
+        
+        current_run.log_info(f"Successfully fetched {len(events)} total events")
+        
+    except Exception as e:
+        current_run.log_error(f"Error fetching events: {str(e)}")
+        raise
+    
     COLUMNS = [
         "event",
         "status",
@@ -182,11 +266,15 @@ def get_events(
         "attributeCategoryOptions",
     ]
     COLUMNS += list(mapping.values())
-
-    df = pl.DataFrame(events)
-    df = df.select([c for c in COLUMNS if c in df.columns])
+    
+    if events:
+        df = pl.DataFrame(events)
+        df = df.select([c for c in COLUMNS if c in df.columns])
+    else:
+        # Return empty DataFrame with expected columns
+        df = pl.DataFrame({col: [] for col in COLUMNS})
+    
     return df
-
 
 def get_program_org_units(dhis2: DHIS2, program_uid: str) -> List[str]:
     """Get org units for a given DHIS2 Tracker program."""

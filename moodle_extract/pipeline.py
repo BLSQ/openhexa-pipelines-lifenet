@@ -41,10 +41,8 @@ def download(db: str, dst_dir: Path):
         df = pl.read_database_uri(query=QUERIES[name], uri=db)
         current_run.log_info(f"Loaded up-to-date {name} data ({len(df)} rows)")
 
-        try:
-            assert len(df) >= len_old
-        except AssertionError:
-            current_run.log_warning(f"New version of file {name}.parquet has less row than previous one")
+        if len(df) < len_old:
+            current_run.log_warning(f"New version of file {name}.parquet has less rows than previous one")
 
         df.write_parquet(dst_file_pqt)
         df.write_csv(dst_file_csv)
