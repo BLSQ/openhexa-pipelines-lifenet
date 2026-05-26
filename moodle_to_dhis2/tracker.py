@@ -149,9 +149,27 @@ def get_events(
 ) -> pl.DataFrame:
     """Get existing enrollments for a given Tracker program using pagination to prevent timeouts."""
     events = []
-    
+
     mapping = {v: k for k, v in data_values.items()}
-    
+
+    BASE_COLUMNS = {
+        "event": pl.Utf8,
+        "status": pl.Utf8,
+        "program": pl.Utf8,
+        "programStage": pl.Utf8,
+        "enrollment": pl.Utf8,
+        "trackedEntity": pl.Utf8,
+        "orgUnit": pl.Utf8,
+        "orgUnitName": pl.Utf8,
+        "occurredAt": pl.Utf8,
+        "createdAt": pl.Utf8,
+        "updatedAt": pl.Utf8,
+        "deleted": pl.Boolean,
+        "attributeOptionCombo": pl.Utf8,
+        "attributeCategoryOptions": pl.Utf8,
+    }
+    SCHEMA = {**BASE_COLUMNS, **{col: pl.Utf8 for col in mapping.values()}}
+
     def make_request_with_retry(params, retry_count=0):
         """Make API request with automatic retry on failure."""
         try:
@@ -177,30 +195,15 @@ def get_events(
         }
         
         r = make_request_with_retry(params)
-        total_instances = r.get("totalInstances", 0)
-        total_pages = r.get("totalPages", 1)
-        
+        pager = r.get("pager", {})
+        total_instances = pager.get("total", r.get("totalInstances", 0))
+
         if total_instances == 0:
             current_run.log_info(f"No events found for program: {program_uid}")
-            # Return empty DataFrame with expected columns
-            COLUMNS = [
-                "event",
-                "status",
-                "program",
-                "programStage",
-                "enrollment",
-                "trackedEntity",
-                "orgUnit",
-                "orgUnitName",
-                "occurredAt",
-                "createdAt",
-                "updatedAt",
-                "deleted",
-                "attributeOptionCombo",
-                "attributeCategoryOptions",
-            ] + list(mapping.values())
-            
-            return pl.DataFrame({col: [] for col in COLUMNS})
+            return pl.DataFrame(schema=SCHEMA)
+
+        # recompute total_pages against the loop's page_size (the count call used pageSize=1)
+        total_pages = (total_instances + page_size - 1) // page_size
         
         current_run.log_info(f"Found {total_instances} total events across {total_pages} pages")
         
@@ -230,9 +233,10 @@ def get_events(
                     
                     current_run.log_info(f"Fetched page {page}/{total_pages}: {len(r['events'])} events (Total: {len(events)})")
                 
-                # Update total_pages in case it changes between requests
-                if "totalPages" in r and r["totalPages"] != total_pages:
-                    total_pages = r["totalPages"]
+                # Update total_pages in case the underlying count changes between requests
+                page_count = r.get("pager", {}).get("pageCount", r.get("totalPages"))
+                if page_count is not None and page_count != total_pages:
+                    total_pages = page_count
                     current_run.log_info(f"Total pages updated to: {total_pages}")
                 
                 # Small delay between requests to avoid rate limiting
@@ -249,31 +253,12 @@ def get_events(
         current_run.log_error(f"Error fetching events: {str(e)}")
         raise
     
-    COLUMNS = [
-        "event",
-        "status",
-        "program",
-        "programStage",
-        "enrollment",
-        "trackedEntity",
-        "orgUnit",
-        "orgUnitName",
-        "occurredAt",
-        "createdAt",
-        "updatedAt",
-        "deleted",
-        "attributeOptionCombo",
-        "attributeCategoryOptions",
-    ]
-    COLUMNS += list(mapping.values())
-    
     if events:
         df = pl.DataFrame(events)
-        df = df.select([c for c in COLUMNS if c in df.columns])
+        df = df.select([c for c in SCHEMA if c in df.columns])
     else:
-        # Return empty DataFrame with expected columns
-        df = pl.DataFrame({col: [] for col in COLUMNS})
-    
+        df = pl.DataFrame(schema=SCHEMA)
+
     return df
 
 def get_program_org_units(dhis2: DHIS2, program_uid: str) -> List[str]:
