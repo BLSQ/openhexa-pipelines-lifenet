@@ -291,6 +291,12 @@ def build_tracked_entities_payload(
         else:
             for key in ["trackedEntity", "trackedEntityType", "orgUnit"]:
                 if str(src_entity[key]) != str(dst_entity[key]):
+                    if key == "orgUnit":
+                        current_run.log_info(
+                            f"Org unit change detected for user {user['user_id']}: "
+                            f"{dst_entity[key]} -> {src_entity[key]}"
+                        )
+                    src_entity[key] = dst_entity[key]  # keep existing org unit to avoid update failure
                     changed = True
                     break
             if not changed:
@@ -480,14 +486,17 @@ def build_grade_events_payload(
             pl.col("course_id").cast(int),
         ]
     )
-
+    existing_events = 0
+    new_events = 0
     for grade in grades.iter_rows(named=True):
         if grade.get("event"):
             uid = grade["event"]
             dst = events.row(by_predicate=pl.col("event") == uid, named=True)
+            existing_events += 1
         else:
             uid = uids.pop()
             dst = {}
+            new_events += 1
 
         # format event data values
         data_values = []
@@ -524,6 +533,8 @@ def build_grade_events_payload(
                 }
             )
 
+    current_run.log_info(f"Found {existing_events} existing grade events.")
+    current_run.log_info(f"Found {new_events} new grade events.")
     return payload
 
 
