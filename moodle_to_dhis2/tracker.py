@@ -92,9 +92,6 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
             key = mapping.get(attr["attribute"])
             if key is not None:
                 entity[key] = attr["value"]
-        if "programOwners" in entity and entity["programOwners"]:
-            current_owner = entity["programOwners"][-1]
-            entity["orgUnit"] = current_owner["orgUnit"]
         entities.append(entity)
 
     COLUMNS = [

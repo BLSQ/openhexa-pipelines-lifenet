@@ -204,6 +204,9 @@ def transform_users(
             
             src_ou = user["org_unit"]
             dst_ou = tracked_entity["orgUnit"]
+            if "programOwners" in tracked_entity and tracked_entity["programOwners"]:
+                current_owner = tracked_entity["programOwners"][-1]
+                dst_ou = current_owner["orgUnit"]
             
             if src_ou != dst_ou:
                 current_run.log_info(
