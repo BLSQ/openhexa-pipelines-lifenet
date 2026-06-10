@@ -82,6 +82,7 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
             "ouMode": "ALL",
             "trackedEntityType": tracked_entity_type,
             "filter": f"{TRACKED_ENTITY_ATTRIBUTES['user_id']}:gt:0",
+            "fields": "trackedEntity,trackedEntityType,createdAt,updatedAt,orgUnit,inactive,deleted,programOwners,attributes[attribute,value]",
             "paging": False,
         },
     )
@@ -91,6 +92,9 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
             key = mapping.get(attr["attribute"])
             if key is not None:
                 entity[key] = attr["value"]
+        if "programOwners" in entity and not entity["programOwners"].is_empty():
+            current_owner = entity["programOwners"][-1]
+            entity["orgUnit"] = current_owner["orgUnit"]
         entities.append(entity)
 
     COLUMNS = [

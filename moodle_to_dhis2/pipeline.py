@@ -205,16 +205,7 @@ def transform_users(
             src_ou = user["org_unit"]
             dst_ou = tracked_entity["orgUnit"]
             
-            #Check if transfered and compare last trensfer org Unit to moodle current org unit
-            programOwners = tracked_entity["programOwners"]
-            if not programOwners.is_empty():
-                if programOwners[-1].orgUnit != user["org_unit"]:
-                    current_run.log_info(
-                        f"Ignoring user {user['user_id']} because they have been transfered to another org unit from {programOwners[-1].orgUnit} to {user['org_unit']} (not supported)"
-                    )
-                    users = users.filter(pl.col("user_id") != user["user_id"])
-            
-            elif src_ou != dst_ou:
+            if src_ou != dst_ou:
                 current_run.log_info(
                     f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported)" 
                 )
