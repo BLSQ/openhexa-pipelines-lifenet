@@ -210,7 +210,7 @@ def transform_users(
             
             if src_ou != dst_ou:
                 current_run.log_info(
-                    f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported)" 
+                    f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported) {tracked_entity['orgUnit']}" 
                 )
                 users = users.filter(pl.col("user_id") != user["user_id"])
 
