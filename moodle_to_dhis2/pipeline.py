@@ -204,6 +204,8 @@ def transform_users(
             
             src_ou = user["org_unit"]
             dst_ou = tracked_entity["orgUnit"]
+            #allow events for users whose org unit has changed but keep existing org unit to avoid update failure and ignore org unit changes for existing tracked entities. 
+            # Skipping org unit comparison for existing tracked entities because org unit changes are not supported by current data model in DHIS2 and can be caused by users transfer between facilities which is a common scenario in LifeNet context.
             if "programOwners" in tracked_entity and tracked_entity["programOwners"]:
                 current_owner = tracked_entity["programOwners"][-1]
                 dst_ou = current_owner["orgUnit"]
@@ -400,7 +402,7 @@ def transform_grades(
         on="course_id",
         how="left",
     )
-
+    current_run.log_info(f"{len(grades)} grade events linked to courses")
     # join existing trackedEntity UID if they already exist
     grades = grades.join(
         other=tracked_entities.select(["trackedEntity", "user_id"]),
@@ -408,7 +410,7 @@ def transform_grades(
         how="left",
     )
     n = len(grades)
-
+    current_run.log_info(f"{n} grade events linked to tracked entities")
     # ignore grade events without trackedEntity UID
     grades = grades.filter(pl.col("trackedEntity").is_not_null())
     if n - len(grades) > 0:
@@ -416,13 +418,14 @@ def transform_grades(
             f"Skipping {n - len(grades)} grade events not linked to any tracked entity"
         )
     n = len(grades)
-
+    current_run.log_info(f"{n} grade events linked to tracked entities with org unit assigned")
     # join enrollment UID if they already exist
     grades = grades.join(
         other=enrollments.select(["enrollment", "trackedEntity", "orgUnit"]),
         on="trackedEntity",
         how="left",
     )
+    current_run.log_info(f"{len(grades)} grade events linked to enrollments")
     # ignore grade events without enrollment UID
     grades = grades.filter(pl.col("enrollment").is_not_null())
     if n - len(grades) > 0:
@@ -430,7 +433,7 @@ def transform_grades(
             f"Skipping {n - len(grades)} grade events not linked to any enrollment"
         )
     n = len(grades)
-
+    current_run.log_info(f"{n} grade events linked to enrollments assigned")
     # transform the course_stage column into 2 values: PRE_TEST and POST_TEST
     grades = grades.with_columns(
         pl.when(pl.col("item_name").str.contains(r"\b(p|P)r(e|é|é)\b"))
@@ -460,7 +463,7 @@ def transform_grades(
         )
         grades = grades.filter(pl.col("orgUnit").is_in(program_org_units))
     n = len(grades)
-
+    current_run.log_info(f"{n} grade events linked to the program")
     # join exist event UID if they already exist
     grades = grades.join(
         other=events.select(
@@ -469,7 +472,7 @@ def transform_grades(
         on=["trackedEntity", "orgUnit", "course_id", "course_stage"],
         how="left",
     )
-
+    current_run.log_info(f"{len(grades)} grade events after linking to existing events IDS")
     return grades
 
 
@@ -490,6 +493,7 @@ def build_grade_events_payload(
     )
     existing_events = 0
     new_events = 0
+    events_from_old_ougnits = 0
     for grade in grades.iter_rows(named=True):
         if grade.get("event"):
             uid = grade["event"]
@@ -518,7 +522,8 @@ def build_grade_events_payload(
             if grade.get(col) is not None:
                 if str(grade.get(col)) != str(dst.get(col)):
                     if str(grade.get(col)) == "orgUnit" and grade.get("event"):
-                        continue # keep existing org unit to avoid update failure and ignore org unit changes for existing events. Skipping org unit comparison for existing events because org unit changes are not supported by current data model in DHIS2 and can be caused by users transfer between facilities which is a common scenario in LifeNet context.
+                        events_from_old_ougnits += 1
+                        continue # Skip existing events when org unit has changed.
                     else:
                         same = False
                     break
@@ -540,6 +545,7 @@ def build_grade_events_payload(
 
     current_run.log_info(f"Found {existing_events} existing grade events.")
     current_run.log_info(f"Found {new_events} new grade events.")
+    current_run.log_info(f"Found {events_from_old_ougnits} existing grade events with org unit changes (skipped for existing events).")
     return payload
 
 
