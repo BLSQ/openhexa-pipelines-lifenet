@@ -206,12 +206,9 @@ def transform_users(
             dst_ou = tracked_entity["orgUnit"]
             #allow events for users whose org unit has changed but keep existing org unit to avoid update failure and ignore org unit changes for existing tracked entities. 
             # Skipping org unit comparison for existing tracked entities because org unit changes are not supported by current data model in DHIS2 and can be caused by users transfer between facilities which is a common scenario in LifeNet context.
-            if "programOwners" in tracked_entity and tracked_entity["programOwners"]:
+            if tracked_entity["programOwners"]:
                 current_owner = tracked_entity["programOwners"][-1]
                 dst_ou = current_owner["orgUnit"]
-            current_run.log_info(
-                f"Comparing org unit for user {user['user_id']}: source={src_ou} vs current={current_owner['orgUnit'] if tracked_entity.get('programOwners') else None}"
-            )
             if src_ou != dst_ou:
                 current_run.log_info(
                     f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported)" 
