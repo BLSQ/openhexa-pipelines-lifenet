@@ -113,6 +113,7 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
         "orgUnit",
         "inactive",
         "deleted",
+        "programOwners"
     ]
     COLUMNS += list(mapping.values())
 
