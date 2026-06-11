@@ -23,6 +23,7 @@ TRACKED_ENTITY_ATTRIBUTES = {
     "gender": "InLMldiUBio",
     "position": "MdUwUhekwRQ",
     "phase": "BhEi9vjZxzH",
+    "is_sister":"nDIEOZg66XB",
 }
 
 POSITION_OPTION_SET = {
@@ -49,6 +50,11 @@ GENDER_OPTION_SET = {
 }  # default: "UNKNOWN"
 
 PROGRAM_PHASE_OPTION_SET = {"Active": "ACTIVE", "Alumni": "ALUMNI"}
+
+IS_SISTER_OPTION_SET = {
+    "YES": "YES",
+    "NO":  "NO",
+}
 
 ENROLLMENTS_DATA_VALUES = {
     "user_id": "lg5Yv6NDl6U",
@@ -86,14 +92,19 @@ def get_tracked_entities(dhis2: DHIS2, tracked_entity_type: str) -> pl.DataFrame
             "paging": False,
         },
     )
-
+    transfered = 0
     for entity in r["trackedEntities"]:
+        if "programOwners" in entity and entity["programOwners"]:
+            transfered += 1
+            
         for attr in entity["attributes"]:
             key = mapping.get(attr["attribute"])
             if key is not None:
                 entity[key] = attr["value"]
         entities.append(entity)
-
+        
+    current_run.log_info(f"Fetched {len(entities)} tracked entities from DHIS2 ({transfered} with program ownership updates)")
+    
     COLUMNS = [
         "trackedEntity",
         "trackedEntityType",

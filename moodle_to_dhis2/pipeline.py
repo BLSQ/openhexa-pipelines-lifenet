@@ -11,6 +11,7 @@ import polars as pl
 from openhexa.sdk import current_run, parameter, pipeline, workspace
 from openhexa.toolbox.dhis2 import DHIS2
 from tracker import (
+    IS_SISTER_OPTION_SET,
     TRACKED_ENTITY_TYPE,
     generate_uid,
     get_enrollments,
@@ -159,7 +160,9 @@ def transform_users(
                 f"Ignoring {n - len(users)} Moodle users because their org unit do not belong to the {program_name} program"
             )
         n = len(users)
-
+    
+    current_run.log_info(f"{n} Moodle users with valid org unit assigned")
+    
     # join existing trackedEntity id if user_id already exists in Tracker
     if not tracked_entities.is_empty():
         tracked_entities = tracked_entities.unique(subset="user_id", keep="last")
@@ -175,12 +178,14 @@ def transform_users(
     else:
         users = users.with_columns(pl.lit(None).alias("trackedEntity"))
 
+    current_run.log_info(f"{len(users)} Moodle users linked to tracked entities")
     # replace source values with option sets
     users = users.with_columns(
         [
             pl.col("gender").replace(GENDER_OPTION_SET, default="UNKNOWN"),
             pl.col("position").replace(POSITION_OPTION_SET, default=None),
             pl.col("phase").replace(PROGRAM_PHASE_OPTION_SET, default=None),
+            pl.col("is_sister").replace(IS_SISTER_OPTION_SET, default="NO"),
         ]
     )
 
