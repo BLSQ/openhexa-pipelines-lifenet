@@ -207,10 +207,12 @@ def transform_users(
             if "programOwners" in tracked_entity and tracked_entity["programOwners"]:
                 current_owner = tracked_entity["programOwners"][-1]
                 dst_ou = current_owner["orgUnit"]
-            
+            current_run.log_info(
+                f"Comparing org unit for user {user['user_id']}: source={src_ou} vs current={current_owner['orgUnit'] if tracked_entity.get('programOwners') else None}"
+            )
             if src_ou != dst_ou:
                 current_run.log_info(
-                    f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported) {tracked_entity['orgUnit']}" 
+                    f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported)" 
                 )
                 users = users.filter(pl.col("user_id") != user["user_id"])
 
