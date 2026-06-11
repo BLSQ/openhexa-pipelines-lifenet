@@ -515,7 +515,10 @@ def build_grade_events_payload(
         for col in LEARNING_DATA_VALUES:
             if grade.get(col) is not None:
                 if str(grade.get(col)) != str(dst.get(col)):
-                    same = False
+                    if str(grade.get(col)) == "orgUnit" and grade.get("event"):
+                        continue # keep existing org unit to avoid update failure and ignore org unit changes for existing events. Skipping org unit comparison for existing events because org unit changes are not supported by current data model in DHIS2 and can be caused by users transfer between facilities which is a common scenario in LifeNet context.
+                    else:
+                        same = False
                     break
 
         if not same:
