@@ -30,6 +30,7 @@ TRACKED_ENTITY_ATTRIBUTES = {
     "gender": "InLMldiUBio",
     "position": "MdUwUhekwRQ",
     "phase": "BhEi9vjZxzH",
+    "is_sister":"nDIEOZg66XB",
 }
 
 POSITION_OPTION_SET = {
@@ -200,6 +201,7 @@ def transform_users(
 
     # ignore tracked entities whose org unit has changed (not supported by current data
     # model in dhis2)
+    transfered = 0
     for user in users.iter_rows(named=True):
         if user["trackedEntity"] in tracked_entities["trackedEntity"]:
             tracked_entity = tracked_entities.row(
@@ -214,12 +216,14 @@ def transform_users(
             if "programOwners" in tracked_entity and tracked_entity["programOwners"]:
                 current_owner = tracked_entity["programOwners"][-1]
                 dst_ou = current_owner["orgUnit"]
+                transfered += 1
             if src_ou != dst_ou:
                 current_run.log_info(
                     f"Ignoring user {user['user_id']} because its org unit has changed from {dst_ou} to {src_ou} (not supported)" 
                 )
                 users = users.filter(pl.col("user_id") != user["user_id"])
-
+    
+    current_run.log_info(f"Transfered {transfered} users with program ownership updates considered")
     # convert datetimes to string as expected by DHIS2
     users = users.with_columns(
         [

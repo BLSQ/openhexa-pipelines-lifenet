@@ -155,7 +155,7 @@ def get_events(
     program_uid: str, 
     data_values: dict, 
     include_deleted: bool = False,
-    page_size: int = 1000,
+    page_size: int = 5000,
     max_retries: int = 3,
     retry_delay: int = 2
 ) -> pl.DataFrame:
