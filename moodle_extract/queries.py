@@ -29,7 +29,13 @@ SELECT
         ELSE customdata.program_stage
       END
     ) AS CHAR(100)
-  ) AS 'phase'
+  ) AS 'phase',
+  CAST(
+    (CASE
+      WHEN customdata.is_sister = 1 THEN 'YES'
+      ELSE 'NO'
+    END) AS CHAR(3)
+  ) AS 'is_sister'
 FROM
   mdl_user AS user_
   LEFT JOIN mdl_cohort_members AS members ON user_.id = members.userid
